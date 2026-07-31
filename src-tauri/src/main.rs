@@ -12,7 +12,7 @@ use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
 /// Bar height in logical pixels. Hardcoded for the prototype; will move to
 /// user settings later.
-const BAR_HEIGHT: f64 = 44.0;
+const BAR_HEIGHT: f64 = 48.0;
 
 fn main() {
     tauri::Builder::default()

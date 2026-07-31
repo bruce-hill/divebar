@@ -8,17 +8,17 @@ export default {
       display: flex;
       align-items: center;
       gap: 2px;
-      height: 30px;
+      height: 34px;
       padding: 0 3px;
-      border-radius: 15px;
+      border-radius: 17px;
       background: var(--chip-bg);
     }
     .widget-workspaces .tag {
       min-width: 26px;
-      height: 24px;
+      height: 28px;
       padding: 0 5px;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       background: transparent;
       color: var(--bar-fg-dim);
       font: inherit;

@@ -59,9 +59,9 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  height: 34px;
   padding: 0 10px;
-  border-radius: 15px;
+  border-radius: 17px;
   background: var(--chip-bg);
   white-space: nowrap;
   transition: background 120ms ease;
@@ -74,6 +74,12 @@ body {
 .chip .icon {
   font-size: 18px;
   line-height: 1;
+}
+
+.chip .icon svg {
+  display: block;
+  width: 30px;
+  height: 30px;
 }
 
 .chip .value {
