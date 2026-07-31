@@ -8,21 +8,20 @@ export default {
       display: flex;
       align-items: center;
       gap: 2px;
-      height: 34px;
+      height: var(--chip-height);
       padding: 0 3px;
-      border-radius: 17px;
+      border-radius: var(--chip-radius);
       background: var(--chip-bg);
     }
     .widget-workspaces .tag {
-      min-width: 26px;
-      height: 28px;
-      padding: 0 5px;
+      min-width: 1.5em;
+      height: calc(var(--chip-height) - 6px);
+      padding: 0 0.35em;
       border: none;
-      border-radius: 14px;
+      border-radius: calc((var(--chip-height) - 6px) / 2);
       background: transparent;
       color: var(--bar-fg-dim);
       font: inherit;
-      font-size: 18px;
       font-variant-numeric: tabular-nums;
       cursor: pointer;
       transition: background 120ms ease, color 120ms ease;

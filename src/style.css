@@ -2,9 +2,16 @@
    and are injected by the registry, so this file only styles the shell. */
 
 :root {
-  /* Must match BAR_HEIGHT in src-tauri/src/main.rs. The window is taller
-     than this: the space below the bar hosts pop-down panels. */
+  /* Set at runtime by main.js from the bar config (height / padding);
+     these are fallbacks. Everything below scales from --chip-height,
+     which is bar height minus vertical padding. */
   --bar-height: 48px;
+  --bar-pad-x: 10px;
+  --bar-pad-y: 6px;
+  --chip-height: 36px;
+  --chip-radius: 18px;
+  --bar-font: 20px;
+  --icon-size: 32px;
   --bar-bg: rgba(16, 18, 24, 0.92);
   --bar-fg: #e6e9ef;
   --bar-fg-dim: #9aa3b2;
@@ -43,12 +50,12 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 10px;
+  padding: var(--bar-pad-y) var(--bar-pad-x);
   background: var(--bar-bg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   color: var(--bar-fg);
   font-family: var(--font);
-  font-size: 19px;
+  font-size: var(--bar-font);
 }
 
 /* Shared look for widgets that opt into the "chip" class */
@@ -56,9 +63,9 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 17px;
+  height: var(--chip-height);
+  padding: 0 calc(var(--chip-height) * 0.3);
+  border-radius: var(--chip-radius);
   background: var(--chip-bg);
   white-space: nowrap;
   transition: background 120ms ease;
@@ -69,18 +76,18 @@ body {
 }
 
 .chip .icon {
-  font-size: 18px;
+  font-size: var(--bar-font);
   line-height: 1;
 }
 
 .chip .icon svg {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .chip .value {
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: var(--bar-font);
   font-variant-numeric: tabular-nums;
 }

@@ -17,6 +17,7 @@ pub fn config_file() -> PathBuf {
 
 pub fn default_config() -> Value {
     json!({
+        "bar": { "height": 48, "paddingX": 10, "paddingY": 6 },
         "widgets": [
             { "widget": "workspaces", "options": {} },
             { "widget": "window-title", "options": {} },

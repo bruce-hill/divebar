@@ -13,7 +13,10 @@ export default {
     .widget-battery { display: none; }
     .widget-battery .value { width: 4ch; text-align: left; } /* "100%" */
     /* Wide battery so the fill level reads accurately at a glance */
-    .widget-battery .icon svg { width: 50px; height: 30px; }
+    .widget-battery .icon svg {
+      width: calc(var(--icon-size) * 5 / 3);
+      height: var(--icon-size);
+    }
     .widget-battery.present { display: flex; }
     .widget-battery.charging .icon { color: var(--accent); }
     .widget-battery.low .icon,

@@ -215,6 +215,44 @@ function setupRowsDnD(rowsEl) {
   });
 }
 
+// --- Bar settings ----------------------------------------------------------
+
+const BAR_SETTINGS = [
+  { key: "height", label: "Bar height (px)", min: 24, max: 128, default: 48 },
+  { key: "paddingX", label: "Horizontal padding (px)", min: 0, max: 48, default: 10 },
+  { key: "paddingY", label: "Vertical padding (px)", min: 0, max: 24, default: 6 },
+];
+
+function barSection() {
+  const section = el("section");
+  section.append(el("h2", "", "Bar"));
+  const body = el("div", "row");
+  const inner = el("div", "row-settings");
+  inner.style.borderTop = "none";
+  for (const schema of BAR_SETTINGS) {
+    const row = el("div", "setting-row");
+    row.append(el("label", "", schema.label));
+    const input = el("input");
+    input.type = "number";
+    input.min = schema.min;
+    input.max = schema.max;
+    input.value = (state.bar ??= {})[schema.key] ?? schema.default;
+    input.addEventListener("change", () => {
+      let v = Number(input.value);
+      if (Number.isNaN(v)) v = schema.default;
+      v = Math.min(schema.max, Math.max(schema.min, v));
+      input.value = v;
+      (state.bar ??= {})[schema.key] = v;
+      scheduleSave();
+    });
+    row.append(input);
+    inner.append(row);
+  }
+  body.append(inner);
+  section.append(body);
+  return section;
+}
+
 // --- Add widget ------------------------------------------------------------
 
 function addControls() {
@@ -257,6 +295,7 @@ function addControls() {
 
 function render() {
   sectionsEl.replaceChildren();
+  sectionsEl.append(barSection());
   const section = el("section");
   section.append(el("h2", "", "Widgets (bar order, left to right)"));
   const rowsEl = el("div", "rows");
@@ -297,6 +336,7 @@ async function init() {
 
   state = await invoke("get_config");
   state.widgets ??= [];
+  state.bar ??= {};
   render();
 }
 

@@ -11,7 +11,6 @@ export default {
       text-overflow: ellipsis;
       white-space: nowrap;
       color: var(--bar-fg-dim);
-      font-size: 19px;
       padding: 0 4px;
     }
   `,

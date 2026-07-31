@@ -81,6 +81,15 @@ pub fn setup_dock_window(
 
     // The GDK window must exist before we can set X properties on it.
     gtk_window.realize();
+    set_strut(window, bar_height_px, monitor_width_px, origin_x);
+}
+
+/// Sets (or replaces) the reserved screen space for the bar. Callable again
+/// at runtime when the bar height setting changes.
+pub fn set_strut(window: &WebviewWindow, bar_height_px: u32, monitor_width_px: u32, origin_x: i32) {
+    let Ok(gtk_window) = window.gtk_window() else {
+        return;
+    };
     let Some(gdk_window) = gtk_window.window() else {
         eprintln!("divebar: GTK window not realized; skipping strut setup");
         return;

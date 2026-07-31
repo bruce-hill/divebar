@@ -71,6 +71,24 @@ function defaultOptions(widget) {
   return defaults;
 }
 
+// Derive all sizing (chip height, font, icons) from the configured bar
+// height and padding, so widgets scale with the available space.
+function applyBarStyle(config) {
+  const bar = config?.bar ?? {};
+  const height = bar.height ?? 48;
+  const padX = bar.paddingX ?? 10;
+  const padY = bar.paddingY ?? 6;
+  const chip = Math.max(14, height - 2 * padY);
+  const root = document.documentElement.style;
+  root.setProperty("--bar-height", `${height}px`);
+  root.setProperty("--bar-pad-x", `${padX}px`);
+  root.setProperty("--bar-pad-y", `${padY}px`);
+  root.setProperty("--chip-height", `${chip}px`);
+  root.setProperty("--chip-radius", `${chip / 2}px`);
+  root.setProperty("--bar-font", `${Math.round(chip * 0.55)}px`);
+  root.setProperty("--icon-size", `${Math.round(chip * 0.88)}px`);
+}
+
 let mounted = []; // [{ el, destroy? }] of live widget instances
 
 async function mountWidget(zoneEl, { widget: name, options = {} }) {
@@ -96,6 +114,7 @@ async function mountWidget(zoneEl, { widget: name, options = {} }) {
 }
 
 async function renderBar(config) {
+  applyBarStyle(config);
   for (const instance of mounted) {
     try {
       instance.destroy?.();

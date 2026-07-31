@@ -11,17 +11,16 @@ mod linux;
 
 use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
-/// Bar height in logical pixels. Must match --bar-height in src/style.css.
-/// Hardcoded for the prototype; will move to user settings later.
-const BAR_HEIGHT: f64 = 48.0;
+/// Fallback bar height (logical px) when the config has none.
+pub const DEFAULT_BAR_HEIGHT: f64 = 48.0;
 
 /// Extra transparent space below the bar (logical px) where pop-down panels
 /// (volume/brightness sliders) can render. Normally click-through via the
 /// X11 input shape; made interactive only while a popup is open.
-const POPUP_SPACE: f64 = 160.0;
+pub const POPUP_SPACE: f64 = 160.0;
 
-/// Window geometry in physical pixels, shared with commands that toggle the
-/// interactive input region.
+/// Window geometry in physical pixels, shared (behind a Mutex) with
+/// commands that toggle the interactive input region or resize the bar.
 pub struct Geometry {
     pub width_px: u32,
     pub bar_px: u32,
@@ -33,6 +32,17 @@ pub struct Geometry {
     /// Whether a compositor is running; without one the window's bounding
     /// shape must be clipped to visible content (transparency shows black).
     pub composited: bool,
+    /// Monitor origin (for strut coordinates in root-window space).
+    pub origin_x: i32,
+}
+
+pub fn bar_height_from(config: &serde_json::Value) -> f64 {
+    config
+        .get("bar")
+        .and_then(|b| b.get("height"))
+        .and_then(serde_json::Value::as_f64)
+        .filter(|h| (16.0..=256.0).contains(h))
+        .unwrap_or(DEFAULT_BAR_HEIGHT)
 }
 
 fn main() {
@@ -74,8 +84,9 @@ fn main() {
                 .or_else(|| window.current_monitor().ok().flatten())
                 .expect("no monitor found");
             let scale = monitor.scale_factor();
-            let bar_height_px = (BAR_HEIGHT * zoom * scale).round() as u32;
-            let total_height_px = ((BAR_HEIGHT + POPUP_SPACE) * zoom * scale).round() as u32;
+            let bar_height = bar_height_from(&config::load());
+            let bar_height_px = (bar_height * zoom * scale).round() as u32;
+            let total_height_px = ((bar_height + POPUP_SPACE) * zoom * scale).round() as u32;
             let monitor_width_px = monitor.size().width;
             let origin = *monitor.position();
 
@@ -95,14 +106,15 @@ fn main() {
             #[cfg(target_os = "linux")]
             linux::setup_dock_window(&window, bar_height_px, monitor_width_px, origin.x);
 
-            app.manage(Geometry {
+            app.manage(std::sync::Mutex::new(Geometry {
                 width_px: monitor_width_px,
                 bar_px: bar_height_px,
                 total_px: total_height_px,
                 css_scale: zoom * scale,
                 zoom,
                 composited,
-            });
+                origin_x: origin.x,
+            }));
 
             window.show()?;
 

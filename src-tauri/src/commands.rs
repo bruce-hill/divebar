@@ -53,15 +53,20 @@ pub struct PopupRect {
 #[tauri::command]
 pub async fn set_popup_open(
     window: tauri::WebviewWindow,
-    geometry: tauri::State<'_, crate::Geometry>,
+    geometry: tauri::State<'_, std::sync::Mutex<crate::Geometry>>,
     open: bool,
     rect: Option<PopupRect>,
 ) -> Result<(), String> {
-    let width = geometry.width_px as i32;
-    let bar = geometry.bar_px as i32;
-    let total = geometry.total_px as i32;
-    let composited = geometry.composited;
-    let s = geometry.css_scale;
+    let (width, bar, total, composited, s) = {
+        let g = geometry.lock().unwrap();
+        (
+            g.width_px as i32,
+            g.bar_px as i32,
+            g.total_px as i32,
+            g.composited,
+            g.css_scale,
+        )
+    };
 
     let mut rects = vec![(0, 0, width, bar)];
     if open {
@@ -123,9 +128,10 @@ fn push_bottom_rounded_rect(
 /// rounded transparent corners).
 #[tauri::command]
 pub async fn get_env(
-    geometry: tauri::State<'_, crate::Geometry>,
+    geometry: tauri::State<'_, std::sync::Mutex<crate::Geometry>>,
 ) -> Result<Value, String> {
-    Ok(serde_json::json!({ "composited": geometry.composited }))
+    let composited = geometry.lock().unwrap().composited;
+    Ok(serde_json::json!({ "composited": composited }))
 }
 
 #[tauri::command]
@@ -138,7 +144,8 @@ pub async fn get_default_config() -> Result<Value, String> {
     Ok(crate::config::default_config())
 }
 
-/// Persists the config and broadcasts it so the bar re-renders live.
+/// Persists the config and broadcasts it so the bar re-renders live. Also
+/// re-applies the window geometry if the bar height setting changed.
 #[tauri::command]
 pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), String> {
     use tauri::Emitter;
@@ -146,7 +153,41 @@ pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), Str
         return Err("config must have a widgets array".into());
     }
     crate::config::save(&config)?;
-    app.emit("divebar://config", &config).map_err(|e| e.to_string())
+    app.emit("divebar://config", &config)
+        .map_err(|e| e.to_string())?;
+    apply_bar_height(&app, crate::bar_height_from(&config));
+    Ok(())
+}
+
+/// Resizes the bar window, strut, and shapes for a new logical bar height.
+fn apply_bar_height(app: &tauri::AppHandle, height_logical: f64) {
+    use tauri::Manager;
+    let state = app.state::<std::sync::Mutex<crate::Geometry>>();
+    let (width, bar_px, total_px, composited, origin_x) = {
+        let mut g = state.lock().unwrap();
+        let new_bar = (height_logical * g.css_scale).round() as u32;
+        if new_bar == g.bar_px {
+            return;
+        }
+        g.bar_px = new_bar;
+        g.total_px = ((height_logical + crate::POPUP_SPACE) * g.css_scale).round() as u32;
+        (g.width_px, g.bar_px, g.total_px, g.composited, g.origin_x)
+    };
+
+    let Some(win) = app.get_webview_window("main") else {
+        return;
+    };
+    let _ = win.set_size(tauri::PhysicalSize::new(width, total_px));
+    #[cfg(target_os = "linux")]
+    {
+        let win2 = win.clone();
+        let _ = win.run_on_main_thread(move || {
+            crate::linux::set_strut(&win2, bar_px, width, origin_x);
+            crate::linux::set_region(&win2, &[(0, 0, width as i32, bar_px as i32)], !composited);
+        });
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = (bar_px, composited, origin_x);
 }
 
 /// Opens (or focuses) the settings window: a normal floating dialog, not
@@ -154,7 +195,7 @@ pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), Str
 #[tauri::command]
 pub async fn open_settings(
     app: tauri::AppHandle,
-    geometry: tauri::State<'_, crate::Geometry>,
+    geometry: tauri::State<'_, std::sync::Mutex<crate::Geometry>>,
 ) -> Result<(), String> {
     use tauri::Manager;
     if let Some(win) = app.get_webview_window("settings") {
@@ -162,7 +203,7 @@ pub async fn open_settings(
         let _ = win.set_focus();
         return Ok(());
     }
-    let zoom = geometry.zoom;
+    let zoom = geometry.lock().unwrap().zoom;
     let win = tauri::WebviewWindowBuilder::new(
         &app,
         "settings",
