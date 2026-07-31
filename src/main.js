@@ -1,16 +1,17 @@
-// divebar bootstrap: loads the widget config, dynamically imports each
-// widget module, injects its CSS, and mounts it into its zone.
+// divebar bootstrap: fetches the bar config from the backend, dynamically
+// imports each widget module, injects its CSS, and mounts it into its zone.
+// Re-renders live when the settings window saves a new config.
 //
 // Widget contract — each module in ./widgets/ default-exports:
 //   {
 //     name: string,            // unique id, matches the filename
 //     css: string,             // widget-scoped CSS, injected once
+//     settings: [ ... ],       // optional settings schema (see README)
 //     create(ctx): { el, destroy? }
 //   }
 // where ctx = { options, onStats(cb), onEvent(name, cb), invoke, listen }
-// (onStats/onEvent return an unsubscribe fn and replay the latest payload).
-
-import config from "./config.js";
+// (onStats/onEvent return an unsubscribe fn and replay the latest payload;
+// options come pre-merged with the schema's defaults).
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -62,23 +63,68 @@ function injectCss(name, css) {
   document.head.appendChild(style);
 }
 
+function defaultOptions(widget) {
+  const defaults = {};
+  for (const setting of widget.settings ?? []) {
+    defaults[setting.key] = setting.default;
+  }
+  return defaults;
+}
+
+let mounted = []; // [{ el, destroy? }] of live widget instances
+
 async function mountWidget(zoneEl, { widget: name, options = {} }) {
   try {
     const module = await import(`./widgets/${name}.js`);
     const widget = module.default;
     injectCss(widget.name, widget.css);
-    const instance = widget.create({ options, onStats, onEvent, invoke, listen });
-    if (instance?.el) zoneEl.appendChild(instance.el);
+    const merged = { ...defaultOptions(widget), ...options };
+    const instance = widget.create({
+      options: merged,
+      onStats,
+      onEvent,
+      invoke,
+      listen,
+    });
+    if (instance?.el) {
+      zoneEl.appendChild(instance.el);
+      mounted.push(instance);
+    }
   } catch (err) {
     console.error(`divebar: failed to mount widget "${name}"`, err);
   }
 }
 
-for (const [zone, entries] of Object.entries(config)) {
-  const zoneEl = document.getElementById(`zone-${zone}`);
-  if (!zoneEl) continue;
-  // Mount sequentially within a zone so widget order matches the config.
-  (async () => {
-    for (const entry of entries) await mountWidget(zoneEl, entry);
-  })();
+async function renderBar(config) {
+  for (const instance of mounted) {
+    try {
+      instance.destroy?.();
+    } catch (err) {
+      console.error("divebar: widget destroy failed", err);
+    }
+    instance.el?.remove();
+  }
+  mounted = [];
+  for (const zone of ["left", "center", "right"]) {
+    const zoneEl = document.getElementById(`zone-${zone}`);
+    // Mount sequentially within a zone so widget order matches the config.
+    for (const entry of config?.zones?.[zone] ?? []) {
+      await mountWidget(zoneEl, entry);
+    }
+  }
 }
+
+invoke("get_config")
+  .then(renderBar)
+  .catch((err) => console.error("divebar: get_config failed", err));
+
+// Live-apply config saved from the settings window.
+listen("divebar://config", (event) => renderBar(event.payload));
+
+// Right-click anywhere on the bar opens settings.
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  invoke("open_settings").catch((err) =>
+    console.error("divebar: open_settings failed", err),
+  );
+});

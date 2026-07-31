@@ -46,7 +46,16 @@ export default {
       font-weight: 700;
     }
   `,
-  create({ onEvent, invoke }) {
+  settings: [
+    {
+      key: "labels",
+      label: "Tag labels",
+      type: "select",
+      choices: ["numbers", "names"],
+      default: "numbers",
+    },
+  ],
+  create({ options, onEvent, invoke }) {
     const el = document.createElement("div");
     el.className = "widget-workspaces";
 
@@ -64,9 +73,10 @@ export default {
             const btn = document.createElement("button");
             btn.className = "tag";
             btn.dataset.tag = tag.name;
-            // Show the tag's position number; the name is still used for
+            // Position number by default; the name is always used for
             // switching and shown as a tooltip.
-            btn.textContent = String(i + 1);
+            btn.textContent =
+              options.labels === "names" ? tag.name : String(i + 1);
             btn.title = tag.name;
             btn.addEventListener("click", () =>
               invoke("hlwm_use_tag", { tag: tag.name }),

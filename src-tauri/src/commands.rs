@@ -129,6 +129,62 @@ pub async fn get_env(
 }
 
 #[tauri::command]
+pub async fn get_config() -> Result<Value, String> {
+    Ok(crate::config::load())
+}
+
+#[tauri::command]
+pub async fn get_default_config() -> Result<Value, String> {
+    Ok(crate::config::default_config())
+}
+
+/// Persists the config and broadcasts it so the bar re-renders live.
+#[tauri::command]
+pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), String> {
+    use tauri::Emitter;
+    if !config.get("zones").is_some_and(Value::is_object) {
+        return Err("config must have a zones object".into());
+    }
+    crate::config::save(&config)?;
+    app.emit("divebar://config", &config).map_err(|e| e.to_string())
+}
+
+/// Opens (or focuses) the settings window: a normal floating dialog, not
+/// part of the bar's dock window.
+#[tauri::command]
+pub async fn open_settings(
+    app: tauri::AppHandle,
+    geometry: tauri::State<'_, crate::Geometry>,
+) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(win) = app.get_webview_window("settings") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+    let zoom = geometry.zoom;
+    let win = tauri::WebviewWindowBuilder::new(
+        &app,
+        "settings",
+        tauri::WebviewUrl::App("settings.html".into()),
+    )
+    .title("divebar settings")
+    .inner_size(780.0 * zoom, 640.0 * zoom)
+    .center()
+    .build()
+    .map_err(|e| e.to_string())?;
+    if zoom != 1.0 {
+        let _ = win.set_zoom(zoom);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let gtk_win = win.clone();
+        let _ = win.run_on_main_thread(move || crate::linux::make_dialog(&gtk_win));
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn launch_wifi_gui() -> Result<(), String> {
     let child = Command::new("/usr/local/bin/wifi-gui")
         .spawn()

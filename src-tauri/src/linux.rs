@@ -57,6 +57,14 @@ pub fn set_region(window: &WebviewWindow, rects: &[(i32, i32, i32, i32)], shape_
     }
 }
 
+/// Marks a window as a dialog so tiling WMs float it. Must run on the main
+/// thread (GTK is not thread-safe).
+pub fn make_dialog(window: &WebviewWindow) {
+    if let Ok(gtk_window) = window.gtk_window() {
+        gtk_window.set_type_hint(gdk::WindowTypeHint::Dialog);
+    }
+}
+
 pub fn setup_dock_window(
     window: &WebviewWindow,
     bar_height_px: u32,

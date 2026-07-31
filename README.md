@@ -27,10 +27,19 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
   icon toggles mute
 - **brightness** — level via brightnessctl; click opens a pop-down slider
 - **battery** — charge % + charging state (auto-hides on desktops)
-- **date** — "Fri Jul 31" (fixed width)
-- **time** — "2:27pm" (fixed width)
+- **date** — "Fri Jul 31" (fixed width; optional year)
+- **time** — "2:27pm" (fixed width; optional 24-hour / seconds)
+- **settings** — gear that opens the settings window
 
 Also available but not in the default config: **logo**, **cpu**, **memory**.
+
+## Configuration
+
+Config lives in `~/.local/config/divebar/config.json` (created with
+defaults on first run; hand-editable). The settings window — gear icon or
+right-click anywhere on the bar — lets you reorder widgets (within and
+across the three zones), add/remove them, and edit per-widget options.
+Save & Apply re-renders the bar live.
 
 ## Running
 
@@ -57,12 +66,14 @@ scales the bar height to match.
 src/                    # frontend (no bundler)
 ├── index.html          # bar shell: three zones (left / center / right)
 ├── style.css           # bar chrome + shared .chip styling + CSS variables
-├── config.js           # which widgets go in which zone (hardcoded for now)
 ├── main.js             # widget registry: loads config, mounts widgets
-└── widgets/*.js        # one self-contained file per widget
+├── settings.html/js/css# settings window (separate floating dialog)
+├── lib/                # shared frontend helpers (slider popup)
+└── widgets/*.js        # one self-contained file per widget (+ index.js manifest)
 src-tauri/
 ├── src/main.rs         # window creation: undecorated, full-width, top edge
 ├── src/linux.rs        # X11 dock type hint + strut (space reservation)
+├── src/config.rs       # config load/save (~/.local/config/divebar/)
 ├── src/stats.rs        # background thread emitting `divebar://stats` events
 ├── src/hlwm.rs         # herbstclient --idle watcher → `divebar://hlwm` events
 ├── src/readers.rs      # volume/brightness/wifi readers (shared by both below)
@@ -77,6 +88,10 @@ Each widget is one file in `src/widgets/` that default-exports:
 export default {
   name: "mywidget",        // unique id, matches the filename
   css: `...`,              // widget-scoped CSS, injected once by the registry
+  settings: [              // optional: schema the settings UI renders
+    // { key, label, type: "boolean"|"number"|"select"|"text",
+    //   default, min?, max?, choices? }
+  ],
   create(ctx) {
     // ctx.options — the options object from config.js
     // ctx.onStats(cb) — subscribe to system stats; returns unsubscribe fn.
@@ -91,8 +106,10 @@ export default {
 };
 ```
 
-To add a widget: drop the file in `src/widgets/` and reference it from
-`config.js`. Nothing else to register.
+To add a widget: drop the file in `src/widgets/`, list it in
+`src/widgets/index.js` (the manifest the settings UI reads), and add it to
+a zone via the settings window or the config file. `ctx.options` arrives
+pre-merged with the schema's defaults.
 
 System data flows one way, over two event channels:
 
@@ -120,9 +137,9 @@ it and shrinks the region back). Only the bar strip is reserved via strut.
 
 ## Roadmap / non-goals of the prototype
 
-- **Settings menu** — `config.js` and the constants in `main.rs` (bar height)
-  and `style.css` (`:root` variables for theming) are deliberately plain data,
-  meant to be replaced by user-editable, persisted settings later.
+- **More settings** — bar height, theme colors, and fonts are still
+  hardcoded constants (`main.rs`, `style.css` `:root` variables); fold them
+  into the config file + settings window.
 - **Wayland** — space reservation currently uses X11 struts; Wayland support
   would go through `gtk-layer-shell` in `linux.rs`.
 - **More widgets** — system tray, media player, notifications.

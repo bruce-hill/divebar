@@ -1,4 +1,5 @@
-// Date widget. Format: "Fri Jul 31", fixed width so the bar never jitters.
+// Date widget. Format: "Fri Jul 31" (optionally with year), fixed width so
+// the bar never jitters.
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -10,23 +11,28 @@ export default {
   name: "date",
   css: `
     .widget-date .text {
-      width: 10ch; /* "Fri Jul 31" */
       text-align: left;
       font-family: var(--font-mono);
       font-weight: 600;
       font-variant-numeric: tabular-nums;
     }
   `,
-  create() {
+  settings: [
+    { key: "showYear", label: "Show year", type: "boolean", default: false },
+  ],
+  create({ options }) {
     const el = document.createElement("div");
     el.className = "chip widget-date";
     const textEl = document.createElement("span");
     textEl.className = "text";
+    // "Fri Jul 31" = 10ch, "Fri Jul 31 2026" = 15ch
+    textEl.style.width = options.showYear ? "15ch" : "10ch";
     el.appendChild(textEl);
 
     const render = () => {
       const d = new Date();
-      textEl.textContent = `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+      const year = options.showYear ? ` ${d.getFullYear()}` : "";
+      textEl.textContent = `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}${year}`;
     };
     render();
     const timer = setInterval(render, 1000);

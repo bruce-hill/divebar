@@ -19,7 +19,17 @@ export default {
     .widget-battery.low .icon,
     .widget-battery.low .value { color: var(--critical); }
   `,
-  create({ onStats }) {
+  settings: [
+    {
+      key: "lowThreshold",
+      label: "Low battery threshold (%)",
+      type: "number",
+      min: 5,
+      max: 50,
+      default: 15,
+    },
+  ],
+  create({ options, onStats }) {
     const el = document.createElement("div");
     el.className = "chip widget-battery";
     el.innerHTML = `
@@ -53,7 +63,10 @@ export default {
       fillEl.setAttribute("fill", `hsl(${1.2 * battery.percent}, 75%, 50%)`);
       boltEl.style.display = battery.charging ? "" : "none";
       el.classList.toggle("charging", battery.charging);
-      el.classList.toggle("low", !battery.charging && battery.percent <= 15);
+      el.classList.toggle(
+        "low",
+        !battery.charging && battery.percent <= options.lowThreshold,
+      );
     });
 
     return { el, destroy: unsubscribe };

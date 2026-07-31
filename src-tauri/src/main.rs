@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod config;
 mod hlwm;
 mod readers;
 mod stats;
@@ -27,6 +28,8 @@ pub struct Geometry {
     pub total_px: u32,
     /// Multiplier from frontend CSS px to physical px (zoom * monitor scale).
     pub css_scale: f64,
+    /// Webview zoom factor, also applied to auxiliary windows (settings).
+    pub zoom: f64,
     /// Whether a compositor is running; without one the window's bounding
     /// shape must be clipped to visible content (transparency shows black).
     pub composited: bool,
@@ -97,6 +100,7 @@ fn main() {
                 bar_px: bar_height_px,
                 total_px: total_height_px,
                 css_scale: zoom * scale,
+                zoom,
                 composited,
             });
 
@@ -120,6 +124,10 @@ fn main() {
             commands::set_brightness,
             commands::set_popup_open,
             commands::get_env,
+            commands::get_config,
+            commands::get_default_config,
+            commands::save_config,
+            commands::open_settings,
             commands::launch_wifi_gui,
         ])
         .run(tauri::generate_context!())
