@@ -47,6 +47,14 @@ const CSS = `
     color: var(--bar-fg);
     font-variant-numeric: tabular-nums;
   }
+  /* Shaped (compositor-less) windows: no soft shadow, flush under the bar,
+     and only the bottom corners rounded — mirrored by the X11 shape the
+     backend builds (radius must match set_popup_open's). */
+  :root.no-compositor .dpopup {
+    border-radius: 0 0 14px 14px;
+    box-shadow: none;
+    top: var(--bar-height);
+  }
 `;
 
 const THROTTLE_MS = 80;
@@ -92,6 +100,22 @@ export function createSliderPopup({ anchor, invoke, onChange }) {
     if (!popupEl.contains(e.target) && !anchor.contains(e.target)) close();
   }
 
+  // Close when the pointer wanders away from both the popup and its anchor.
+  // This is the main close path without a compositor, where clicks outside
+  // the shaped window go to other applications and never reach us.
+  let leaveTimer = null;
+  const disarmClose = () => {
+    if (leaveTimer) clearTimeout(leaveTimer);
+    leaveTimer = null;
+  };
+  const armClose = () => {
+    disarmClose();
+    leaveTimer = setTimeout(() => {
+      if (!dragging) close();
+      else armClose();
+    }, 700);
+  };
+
   function open() {
     if (popupEl) return;
     if (openPopup && openPopup !== api) openPopup.close();
@@ -128,20 +152,29 @@ export function createSliderPopup({ anchor, invoke, onChange }) {
       emit(value);
     });
     document.addEventListener("pointerdown", onDocPointerDown, true);
+    popupEl.addEventListener("pointerenter", disarmClose);
+    popupEl.addEventListener("pointerleave", armClose);
+    anchor.addEventListener("pointerenter", disarmClose);
+    anchor.addEventListener("pointerleave", armClose);
 
-    invoke("set_popup_open", { open: true }).catch((err) =>
-      console.error("divebar: set_popup_open failed", err),
-    );
+    const r = popupEl.getBoundingClientRect();
+    invoke("set_popup_open", {
+      open: true,
+      rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+    }).catch((err) => console.error("divebar: set_popup_open failed", err));
   }
 
   function close() {
     if (!popupEl) return;
     document.removeEventListener("pointerdown", onDocPointerDown, true);
+    anchor.removeEventListener("pointerenter", disarmClose);
+    anchor.removeEventListener("pointerleave", armClose);
+    disarmClose();
     popupEl.remove();
     popupEl = sliderEl = valueEl = null;
     dragging = false;
     if (openPopup === api) openPopup = null;
-    invoke("set_popup_open", { open: false }).catch((err) =>
+    invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
       console.error("divebar: set_popup_open failed", err),
     );
   }

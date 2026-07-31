@@ -25,9 +25,21 @@ pub struct Geometry {
     pub width_px: u32,
     pub bar_px: u32,
     pub total_px: u32,
+    /// Multiplier from frontend CSS px to physical px (zoom * monitor scale).
+    pub css_scale: f64,
+    /// Whether a compositor is running; without one the window's bounding
+    /// shape must be clipped to visible content (transparency shows black).
+    pub composited: bool,
 }
 
 fn main() {
+    // WebKitGTK's accelerated compositing renders black on shaped/ARGB X11
+    // windows (especially without a compositor). A statusbar doesn't need
+    // GPU compositing — force the software path unless the user overrides.
+    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
+
     tauri::Builder::default()
         .setup(|app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
@@ -70,21 +82,32 @@ fn main() {
             window.set_size(PhysicalSize::new(monitor_width_px, total_height_px))?;
             window.set_position(PhysicalPosition::new(origin.x, origin.y))?;
 
+            #[cfg(target_os = "linux")]
+            let composited = linux::is_composited(&window);
+            #[cfg(not(target_os = "linux"))]
+            let composited = true;
+
             // On X11, mark the window as a dock and reserve screen space so
             // tiled/maximized windows don't overlap the bar.
             #[cfg(target_os = "linux")]
-            {
-                linux::setup_dock_window(&window, bar_height_px, monitor_width_px, origin.x);
-                linux::set_input_region(&window, monitor_width_px as i32, bar_height_px as i32);
-            }
+            linux::setup_dock_window(&window, bar_height_px, monitor_width_px, origin.x);
 
             app.manage(Geometry {
                 width_px: monitor_width_px,
                 bar_px: bar_height_px,
                 total_px: total_height_px,
+                css_scale: zoom * scale,
+                composited,
             });
 
             window.show()?;
+
+            // Shape after mapping — some setups drop shapes applied pre-show.
+            #[cfg(target_os = "linux")]
+            {
+                let bar_strip = [(0, 0, monitor_width_px as i32, bar_height_px as i32)];
+                linux::set_region(&window, &bar_strip, !composited);
+            }
 
             stats::spawn_stats_emitter(app.handle().clone());
             hlwm::spawn_hlwm_watcher(app.handle().clone());
@@ -96,6 +119,7 @@ fn main() {
             commands::toggle_mute,
             commands::set_brightness,
             commands::set_popup_open,
+            commands::get_env,
             commands::launch_wifi_gui,
         ])
         .run(tauri::generate_context!())

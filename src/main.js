@@ -15,6 +15,16 @@ import config from "./config.js";
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
+// Adapt styling to the environment: without a compositor, shaped windows
+// can't have soft shadows or rounded transparent corners.
+invoke("get_env")
+  .then((env) => {
+    if (!env.composited) {
+      document.documentElement.classList.add("no-compositor");
+    }
+  })
+  .catch((err) => console.error("divebar: get_env failed", err));
+
 // --- Event stores ----------------------------------------------------------
 // One subscription per backend event channel, fanned out to widgets. Caches
 // the latest payload so widgets mounted after the first event still get data

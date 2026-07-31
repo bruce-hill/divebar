@@ -23,19 +23,38 @@ pub fn detect_zoom(window: &WebviewWindow) -> Option<f64> {
     }
 }
 
-/// Restricts pointer input to the top `height` pixels of the window. The
-/// rest of the (transparent) window becomes click-through, so the popup
-/// space below the bar doesn't steal clicks from windows underneath.
-pub fn set_input_region(window: &WebviewWindow, width: i32, height: i32) {
+/// Whether a compositing manager is running. Without one, transparent
+/// window regions render as solid black, so we must clip the window's
+/// bounding shape instead of relying on alpha.
+pub fn is_composited(window: &WebviewWindow) -> bool {
+    window
+        .gtk_window()
+        .ok()
+        .and_then(|w| WidgetExt::screen(&w))
+        .map(|s| s.is_composited())
+        .unwrap_or(false)
+}
+
+/// Applies the interactive (input) shape as a union of rectangles, so the
+/// transparent popup space below the bar doesn't steal clicks from windows
+/// underneath. When `shape_bounding` is true (no compositor), the same
+/// region also becomes the window's visible bounding shape, hiding the
+/// would-be-black transparent areas entirely.
+pub fn set_region(window: &WebviewWindow, rects: &[(i32, i32, i32, i32)], shape_bounding: bool) {
     let Ok(gtk_window) = window.gtk_window() else {
         return;
     };
     let Some(gdk_window) = gtk_window.window() else {
         return;
     };
-    let rect = gdk::cairo::RectangleInt::new(0, 0, width, height);
-    let region = gdk::cairo::Region::create_rectangle(&rect);
+    let region = gdk::cairo::Region::create();
+    for &(x, y, w, h) in rects {
+        let _ = region.union_rectangle(&gdk::cairo::RectangleInt::new(x, y, w, h));
+    }
     gdk_window.input_shape_combine_region(&region, 0, 0);
+    if shape_bounding {
+        gdk_window.shape_combine_region(Some(&region), 0, 0);
+    }
 }
 
 pub fn setup_dock_window(
