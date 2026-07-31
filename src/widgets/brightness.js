@@ -1,8 +1,10 @@
 // Screen brightness widget: SVG sun whose core radius, ray length, and ray
-// opacity all scale continuously with the brightness level. Scroll to
-// adjust. Hides itself when no backlight device exists.
+// opacity all scale continuously with the brightness level. Clicking the
+// chip opens a pop-down slider. Hides itself when no backlight device
+// exists.
 
-const SCROLL_STEP_PERCENT = 5;
+import { createSliderPopup } from "../lib/slider-popup.js";
+
 const RAY_COUNT = 8;
 const RAY_INNER = 6.8; // rays start here...
 const RAY_OUTER_MIN = 8.0; // ...and end between these two radii
@@ -11,7 +13,7 @@ const RAY_OUTER_MAX = 10.8;
 export default {
   name: "brightness",
   css: `
-    .widget-brightness { cursor: ns-resize; }
+    .widget-brightness { cursor: pointer; }
     .widget-brightness .value { width: 4ch; text-align: left; } /* "100%" */
   `,
   create({ onStats, invoke }) {
@@ -45,6 +47,7 @@ export default {
       if (!brightness) return;
       const t = brightness.percent / 100;
       valueEl.textContent = `${brightness.percent}%`;
+      popup.setValue(brightness.percent);
       coreEl.setAttribute("r", (3.0 + 1.4 * t).toFixed(2));
       const outer = RAY_OUTER_MIN + (RAY_OUTER_MAX - RAY_OUTER_MIN) * t;
       raysEl.style.opacity = 0.3 + 0.7 * t;
@@ -54,17 +57,27 @@ export default {
       }
     }
 
-    el.addEventListener("wheel", async (e) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? SCROLL_STEP_PERCENT : -SCROLL_STEP_PERCENT;
-      try {
-        render(await invoke("adjust_brightness", { deltaPercent: delta }));
-      } catch (err) {
-        console.error("divebar: adjust_brightness failed", err);
-      }
+    const popup = createSliderPopup({
+      anchor: el,
+      invoke,
+      onChange: async (percent) => {
+        try {
+          render(await invoke("set_brightness", { percent }));
+        } catch (err) {
+          console.error("divebar: set_brightness failed", err);
+        }
+      },
     });
 
+    el.addEventListener("click", () => popup.toggle());
+
     const unsubscribe = onStats((stats) => render(stats.brightness));
-    return { el, destroy: unsubscribe };
+    return {
+      el,
+      destroy() {
+        popup.close();
+        unsubscribe();
+      },
+    };
   },
 };

@@ -2,6 +2,9 @@
    and are injected by the registry, so this file only styles the shell. */
 
 :root {
+  /* Must match BAR_HEIGHT in src-tauri/src/main.rs. The window is taller
+     than this: the space below the bar hosts pop-down panels. */
+  --bar-height: 48px;
   --bar-bg: rgba(16, 18, 24, 0.92);
   --bar-fg: #e6e9ef;
   --bar-fg-dim: #9aa3b2;
@@ -29,7 +32,7 @@ body {
 }
 
 #bar {
-  height: 100%;
+  height: var(--bar-height);
   display: flex;
   align-items: center;
   gap: 8px;

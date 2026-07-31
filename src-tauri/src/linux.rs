@@ -23,6 +23,21 @@ pub fn detect_zoom(window: &WebviewWindow) -> Option<f64> {
     }
 }
 
+/// Restricts pointer input to the top `height` pixels of the window. The
+/// rest of the (transparent) window becomes click-through, so the popup
+/// space below the bar doesn't steal clicks from windows underneath.
+pub fn set_input_region(window: &WebviewWindow, width: i32, height: i32) {
+    let Ok(gtk_window) = window.gtk_window() else {
+        return;
+    };
+    let Some(gdk_window) = gtk_window.window() else {
+        return;
+    };
+    let rect = gdk::cairo::RectangleInt::new(0, 0, width, height);
+    let region = gdk::cairo::Region::create_rectangle(&rect);
+    gdk_window.input_shape_combine_region(&region, 0, 0);
+}
+
 pub fn setup_dock_window(
     window: &WebviewWindow,
     bar_height_px: u32,

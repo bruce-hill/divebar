@@ -1,8 +1,9 @@
 // Volume widget: SVG speaker whose sound waves fade in proportionally to
 // the level (inner wave over 0-50%, outer over 50-100%); an X replaces the
-// waves when muted. Click to toggle mute, scroll to adjust.
+// waves when muted. Clicking the chip opens a pop-down slider; clicking the
+// icon itself toggles mute.
 
-const SCROLL_STEP_PERCENT = 3;
+import { createSliderPopup } from "../lib/slider-popup.js";
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
 
@@ -33,6 +34,7 @@ export default {
       </span>
       <span class="value">--%</span>
     `;
+    const iconEl = el.querySelector(".icon");
     const wave1El = el.querySelector(".wave1");
     const wave2El = el.querySelector(".wave2");
     const muteEl = el.querySelector(".mute");
@@ -42,6 +44,7 @@ export default {
       el.style.display = volume ? "" : "none";
       if (!volume) return;
       valueEl.textContent = `${volume.percent}%`;
+      popup.setValue(volume.percent);
       el.classList.toggle("muted", volume.muted);
       muteEl.style.display = volume.muted ? "" : "none";
       const showWaves = !volume.muted;
@@ -53,7 +56,20 @@ export default {
         : 0;
     }
 
-    el.addEventListener("click", async () => {
+    const popup = createSliderPopup({
+      anchor: el,
+      invoke,
+      onChange: async (percent) => {
+        try {
+          render(await invoke("set_volume", { percent }));
+        } catch (err) {
+          console.error("divebar: set_volume failed", err);
+        }
+      },
+    });
+
+    iconEl.addEventListener("click", async (e) => {
+      e.stopPropagation();
       try {
         render(await invoke("toggle_mute"));
       } catch (err) {
@@ -61,17 +77,15 @@ export default {
       }
     });
 
-    el.addEventListener("wheel", async (e) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? SCROLL_STEP_PERCENT : -SCROLL_STEP_PERCENT;
-      try {
-        render(await invoke("adjust_volume", { deltaPercent: delta }));
-      } catch (err) {
-        console.error("divebar: adjust_volume failed", err);
-      }
-    });
+    el.addEventListener("click", () => popup.toggle());
 
     const unsubscribe = onStats((stats) => render(stats.volume));
-    return { el, destroy: unsubscribe };
+    return {
+      el,
+      destroy() {
+        popup.close();
+        unsubscribe();
+      },
+    };
   },
 };

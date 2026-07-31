@@ -14,8 +14,9 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 - **window-title** — focused window title, expands to fill spare space with
   ellipsis truncation
 - **wifi** — SSID + signal %; click launches `/usr/local/bin/wifi-gui`
-- **volume** — level via wpctl; click toggles mute, scroll adjusts
-- **brightness** — level via brightnessctl; scroll adjusts
+- **volume** — level via wpctl; click opens a pop-down slider, clicking the
+  icon toggles mute
+- **brightness** — level via brightnessctl; click opens a pop-down slider
 - **battery** — charge % + charging state (auto-hides on desktops)
 - **date** — "Fri Jul 31" (fixed width)
 - **time** — "2:27pm" (fixed width)
@@ -93,10 +94,20 @@ System data flows one way, over two event channels:
   focus/title changes) via a persistent `herbstclient --idle` process.
 
 User-initiated controls go the other way as Tauri commands
-(`src-tauri/src/commands.rs`): `hlwm_use_tag`, `adjust_volume`,
-`toggle_mute`, `adjust_brightness`, `launch_wifi_gui`. Commands that change
+(`src-tauri/src/commands.rs`): `hlwm_use_tag`, `set_volume`, `toggle_mute`,
+`set_brightness`, `set_popup_open`, `launch_wifi_gui`. Commands that change
 a value return the fresh state so widgets update instantly rather than
 waiting for the next poll.
+
+### Pop-down panels
+
+The window is actually taller than the bar (`POPUP_SPACE` in `main.rs`):
+the transparent strip below the bar hosts pop-down panels like the
+volume/brightness sliders (`src/lib/slider-popup.js`). An X11 input shape
+normally restricts pointer input to the bar strip so the popup space is
+click-through; while a popup is open, the `set_popup_open` command expands
+the input region to the full window (and clicking outside the popup closes
+it and shrinks the region back). Only the bar strip is reserved via strut.
 
 ## Roadmap / non-goals of the prototype
 

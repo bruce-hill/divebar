@@ -14,18 +14,10 @@ pub async fn hlwm_use_tag(tag: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn adjust_volume(delta_percent: i32) -> Result<Value, String> {
-    let step = format!(
-        "{}%{}",
-        delta_percent.abs(),
-        if delta_percent >= 0 { "+" } else { "-" }
-    );
-    // -l 1.0 caps the volume at 100%.
-    readers::run(
-        "wpctl",
-        &["set-volume", "-l", "1.0", "@DEFAULT_AUDIO_SINK@", &step],
-    )
-    .ok_or("wpctl set-volume failed")?;
+pub async fn set_volume(percent: u32) -> Result<Value, String> {
+    let level = format!("{}%", percent.min(100));
+    readers::run("wpctl", &["set-volume", "@DEFAULT_AUDIO_SINK@", &level])
+        .ok_or("wpctl set-volume failed")?;
     Ok(readers::read_volume())
 }
 
@@ -37,15 +29,36 @@ pub async fn toggle_mute() -> Result<Value, String> {
 }
 
 #[tauri::command]
-pub async fn adjust_brightness(delta_percent: i32) -> Result<Value, String> {
-    let step = format!(
-        "{}%{}",
-        delta_percent.abs(),
-        if delta_percent >= 0 { "+" } else { "-" }
-    );
-    readers::run("brightnessctl", &["-m", "set", &step])
+pub async fn set_brightness(percent: u32) -> Result<Value, String> {
+    let level = format!("{}%", percent.min(100));
+    readers::run("brightnessctl", &["-m", "set", &level])
         .ok_or("brightnessctl set failed")?;
     Ok(readers::read_brightness())
+}
+
+/// Toggles the interactive input region between the bar strip (popups
+/// closed) and the full window including popup space (a popup is open).
+#[tauri::command]
+pub async fn set_popup_open(
+    window: tauri::WebviewWindow,
+    geometry: tauri::State<'_, crate::Geometry>,
+    open: bool,
+) -> Result<(), String> {
+    let width = geometry.width_px as i32;
+    let height = if open {
+        geometry.total_px
+    } else {
+        geometry.bar_px
+    } as i32;
+    let win = window.clone();
+    window
+        .run_on_main_thread(move || {
+            #[cfg(target_os = "linux")]
+            crate::linux::set_input_region(&win, width, height);
+            #[cfg(not(target_os = "linux"))]
+            let _ = (&win, width, height);
+        })
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
