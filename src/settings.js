@@ -308,6 +308,12 @@ function render() {
   sectionsEl.append(section);
 }
 
+document.getElementById("close").addEventListener("click", () => {
+  window.__TAURI__?.core
+    ?.invoke("close_settings")
+    .catch((err) => setStatus(`Close failed: ${err}`, "error"));
+});
+
 document.getElementById("reset").addEventListener("click", async () => {
   try {
     state = await invoke("get_default_config");

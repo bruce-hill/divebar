@@ -75,6 +75,17 @@ button:hover {
   background: var(--panel-hover);
 }
 
+.close-btn {
+  padding: 5px 12px;
+  font-weight: 600;
+}
+
+.close-btn:hover {
+  color: var(--critical);
+  border-color: var(--critical);
+  background: rgba(247, 118, 142, 0.12);
+}
+
 main {
   flex: 1;
   overflow-y: auto;

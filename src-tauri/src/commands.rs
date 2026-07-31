@@ -226,6 +226,15 @@ pub async fn open_settings(
 }
 
 #[tauri::command]
+pub async fn close_settings(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    if let Some(win) = app.get_webview_window("settings") {
+        win.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn launch_wifi_gui() -> Result<(), String> {
     let child = Command::new("/usr/local/bin/wifi-gui")
         .spawn()
