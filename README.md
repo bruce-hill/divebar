@@ -17,7 +17,8 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 - **volume** — level via wpctl; click toggles mute, scroll adjusts
 - **brightness** — level via brightnessctl; scroll adjusts
 - **battery** — charge % + charging state (auto-hides on desktops)
-- **clock** — "Fri Jul 31 2:27pm"
+- **date** — "Fri Jul 31" (fixed width)
+- **time** — "2:27pm" (fixed width)
 
 Also available but not in the default config: **logo**, **cpu**, **memory**.
 

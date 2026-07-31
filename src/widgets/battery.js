@@ -5,6 +5,7 @@ export default {
   name: "battery",
   css: `
     .widget-battery { display: none; }
+    .widget-battery .value { width: 4ch; text-align: right; } /* "100%" */
     .widget-battery.present { display: flex; }
     .widget-battery.charging .icon { color: var(--accent); }
     .widget-battery.low .value { color: var(--critical); }

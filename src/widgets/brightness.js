@@ -7,6 +7,7 @@ export default {
   name: "brightness",
   css: `
     .widget-brightness { cursor: ns-resize; }
+    .widget-brightness .value { width: 4ch; text-align: right; } /* "100%" */
   `,
   create({ onStats, invoke }) {
     const el = document.createElement("div");

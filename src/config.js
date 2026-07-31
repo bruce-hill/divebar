@@ -13,6 +13,7 @@ export default {
     { widget: "volume" },
     { widget: "brightness" },
     { widget: "battery" },
-    { widget: "clock" },
+    { widget: "date" },
+    { widget: "time" },
   ],
 };

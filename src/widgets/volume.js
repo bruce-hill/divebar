@@ -8,6 +8,7 @@ export default {
   name: "volume",
   css: `
     .widget-volume { cursor: pointer; }
+    .widget-volume .value { width: 4ch; text-align: right; } /* "100%" */
     .widget-volume.muted .value,
     .widget-volume.muted .icon { color: var(--bar-fg-dim); }
     .widget-volume.muted .value { text-decoration: line-through; }
