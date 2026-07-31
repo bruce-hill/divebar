@@ -1,0 +1,82 @@
+/* Base bar styling. Widget-specific styles live in each widget module
+   and are injected by the registry, so this file only styles the shell. */
+
+:root {
+  --bar-bg: rgba(16, 18, 24, 0.92);
+  --bar-fg: #e6e9ef;
+  --bar-fg-dim: #9aa3b2;
+  --accent: #7aa2f7;
+  --warn: #e0af68;
+  --critical: #f7768e;
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --chip-bg-hover: rgba(255, 255, 255, 0.12);
+  --font: "Inter", "Cantarell", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+#bar {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--bar-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--bar-fg);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+.zone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+#zone-left   { justify-content: flex-start; }
+#zone-center { justify-content: center; }
+#zone-right  { justify-content: flex-end; }
+
+/* Shared look for widgets that opt into the "chip" class */
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--chip-bg);
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.chip:hover {
+  background: var(--chip-bg-hover);
+}
+
+.chip .icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.chip .value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
