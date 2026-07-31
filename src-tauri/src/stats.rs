@@ -26,6 +26,9 @@ pub fn spawn_stats_emitter(app: AppHandle) {
                     "totalBytes": sys.total_memory(),
                 },
                 "battery": read_battery(),
+                "volume": crate::readers::read_volume(),
+                "brightness": crate::readers::read_brightness(),
+                "wifi": crate::readers::read_wifi(),
             });
 
             if app.emit("divebar://stats", payload).is_err() {

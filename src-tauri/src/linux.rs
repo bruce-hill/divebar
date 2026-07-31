@@ -6,6 +6,23 @@ use gtk::prelude::*;
 use std::os::raw::c_ulong;
 use tauri::WebviewWindow;
 
+/// Detects a HiDPI zoom factor from the GDK screen's font DPI (Xft.dpi /
+/// XSETTINGS). WebKitGTK ignores font DPI and only scales by the integer
+/// GDK window scale, so on setups where HiDPI is expressed via Xft.dpi
+/// (or nothing at all), CSS pixels map 1:1 to tiny physical pixels.
+/// Returns None when the DPI is unset or effectively 96.
+pub fn detect_zoom(window: &WebviewWindow) -> Option<f64> {
+    let gtk_window = window.gtk_window().ok()?;
+    let screen = WidgetExt::screen(&gtk_window)?;
+    let dpi = screen.resolution();
+    let zoom = dpi / 96.0;
+    if dpi > 0.0 && (zoom - 1.0).abs() > 0.05 {
+        Some(zoom)
+    } else {
+        None
+    }
+}
+
 pub fn setup_dock_window(
     window: &WebviewWindow,
     bar_height_px: u32,

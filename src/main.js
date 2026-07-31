@@ -7,31 +7,37 @@
 //     css: string,             // widget-scoped CSS, injected once
 //     create(ctx): { el, destroy? }
 //   }
-// where ctx = { options, onStats(cb) => unsubscribe, invoke, listen }.
+// where ctx = { options, onStats(cb), onEvent(name, cb), invoke, listen }
+// (onStats/onEvent return an unsubscribe fn and replay the latest payload).
 
 import config from "./config.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
-// --- Stats store -----------------------------------------------------------
-// Single subscription to the backend's stats event, fanned out to widgets.
-// Caches the latest payload so widgets mounted after the first event still
-// get data immediately.
+// --- Event stores ----------------------------------------------------------
+// One subscription per backend event channel, fanned out to widgets. Caches
+// the latest payload so widgets mounted after the first event still get data
+// immediately.
 
-let latestStats = null;
-const statsSubscribers = new Set();
+const stores = new Map(); // event name -> { latest, subscribers }
 
-listen("divebar://stats", (event) => {
-  latestStats = event.payload;
-  for (const cb of statsSubscribers) cb(latestStats);
-});
-
-function onStats(cb) {
-  statsSubscribers.add(cb);
-  if (latestStats !== null) cb(latestStats);
-  return () => statsSubscribers.delete(cb);
+function onEvent(name, cb) {
+  let store = stores.get(name);
+  if (!store) {
+    store = { latest: null, subscribers: new Set() };
+    stores.set(name, store);
+    listen(name, (event) => {
+      store.latest = event.payload;
+      for (const sub of store.subscribers) sub(store.latest);
+    });
+  }
+  store.subscribers.add(cb);
+  if (store.latest !== null) cb(store.latest);
+  return () => store.subscribers.delete(cb);
 }
+
+const onStats = (cb) => onEvent("divebar://stats", cb);
 
 // --- Widget registry -------------------------------------------------------
 
@@ -51,7 +57,7 @@ async function mountWidget(zoneEl, { widget: name, options = {} }) {
     const module = await import(`./widgets/${name}.js`);
     const widget = module.default;
     injectCss(widget.name, widget.css);
-    const instance = widget.create({ options, onStats, invoke, listen });
+    const instance = widget.create({ options, onStats, onEvent, invoke, listen });
     if (instance?.el) zoneEl.appendChild(instance.el);
   } catch (err) {
     console.error(`divebar: failed to mount widget "${name}"`, err);

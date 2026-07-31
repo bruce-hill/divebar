@@ -4,14 +4,15 @@
 
 export default {
   left: [
-    { widget: "logo" },
+    { widget: "workspaces" },
+    { widget: "window-title" },
   ],
-  center: [
-    { widget: "clock", options: { showDate: true } },
-  ],
+  center: [],
   right: [
-    { widget: "cpu" },
-    { widget: "memory" },
+    { widget: "wifi" },
+    { widget: "volume" },
+    { widget: "brightness" },
     { widget: "battery" },
+    { widget: "clock" },
   ],
 };

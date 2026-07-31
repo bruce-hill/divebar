@@ -1,5 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod commands;
+mod hlwm;
+mod readers;
 mod stats;
 
 #[cfg(target_os = "linux")]
@@ -9,7 +12,7 @@ use tauri::{PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
 /// Bar height in logical pixels. Hardcoded for the prototype; will move to
 /// user settings later.
-const BAR_HEIGHT: f64 = 32.0;
+const BAR_HEIGHT: f64 = 44.0;
 
 fn main() {
     tauri::Builder::default()
@@ -23,13 +26,27 @@ fn main() {
                 .visible(false)
                 .build()?;
 
+            // HiDPI: WebKitGTK only honors the integer GDK window scale, not
+            // font DPI, so allow zooming the whole webview. Priority:
+            // DIVEBAR_ZOOM env var > Xft.dpi autodetection > 1.0.
+            let zoom = std::env::var("DIVEBAR_ZOOM")
+                .ok()
+                .and_then(|v| v.parse::<f64>().ok())
+                .filter(|z| (0.25..=8.0).contains(z));
+            #[cfg(target_os = "linux")]
+            let zoom = zoom.or_else(|| linux::detect_zoom(&window));
+            let zoom = zoom.unwrap_or(1.0);
+            if zoom != 1.0 {
+                window.set_zoom(zoom)?;
+            }
+
             // Size the bar to span the primary monitor, glued to its top edge.
             let monitor = window
                 .primary_monitor()?
                 .or_else(|| window.current_monitor().ok().flatten())
                 .expect("no monitor found");
             let scale = monitor.scale_factor();
-            let bar_height_px = (BAR_HEIGHT * scale).round() as u32;
+            let bar_height_px = (BAR_HEIGHT * zoom * scale).round() as u32;
             let monitor_width_px = monitor.size().width;
             let origin = *monitor.position();
 
@@ -44,8 +61,16 @@ fn main() {
             window.show()?;
 
             stats::spawn_stats_emitter(app.handle().clone());
+            hlwm::spawn_hlwm_watcher(app.handle().clone());
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            commands::hlwm_use_tag,
+            commands::adjust_volume,
+            commands::toggle_mute,
+            commands::adjust_brightness,
+            commands::launch_wifi_gui,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running divebar");
 }

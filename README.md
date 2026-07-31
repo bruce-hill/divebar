@@ -9,11 +9,17 @@ Working prototype. The bar spans the top of the primary monitor, registers
 itself as an X11 dock (so EWMH-compliant window managers reserve space for it
 via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 
-- **logo** — static branding chip
-- **clock** — time + date (center)
-- **cpu** — usage % with a colored meter
-- **memory** — used / total GiB
+- **workspaces** — herbstluftwm tag switcher (click to switch; live via
+  `herbstclient --idle`)
+- **window-title** — focused window title, expands to fill spare space with
+  ellipsis truncation
+- **wifi** — SSID + signal %; click launches `/usr/local/bin/wifi-gui`
+- **volume** — level via wpctl; click toggles mute, scroll adjusts
+- **brightness** — level via brightnessctl; scroll adjusts
 - **battery** — charge % + charging state (auto-hides on desktops)
+- **clock** — "Fri Jul 31 2:27pm"
+
+Also available but not in the default config: **logo**, **cpu**, **memory**.
 
 ## Running
 
@@ -25,6 +31,14 @@ cargo run            # or: cargo tauri dev
 No Node/npm needed — the frontend is plain ES modules served from `src/` and
 embedded at compile time (`withGlobalTauri` provides the Tauri API). Note that
 frontend changes therefore require a rebuild, even under `cargo tauri dev`.
+
+## HiDPI
+
+WebKitGTK only scales by the integer GDK window scale and ignores font DPI
+(`Xft.dpi`), so on HiDPI setups the bar can render tiny. divebar zooms the
+webview to compensate: it honors a `DIVEBAR_ZOOM` env var (e.g.
+`DIVEBAR_ZOOM=1.5`), falls back to autodetecting `Xft.dpi`/XSETTINGS, and
+scales the bar height to match.
 
 ## Architecture
 
@@ -38,7 +52,10 @@ src/                    # frontend (no bundler)
 src-tauri/
 ├── src/main.rs         # window creation: undecorated, full-width, top edge
 ├── src/linux.rs        # X11 dock type hint + strut (space reservation)
-└── src/stats.rs        # background thread emitting `divebar://stats` events
+├── src/stats.rs        # background thread emitting `divebar://stats` events
+├── src/hlwm.rs         # herbstclient --idle watcher → `divebar://hlwm` events
+├── src/readers.rs      # volume/brightness/wifi readers (shared by both below)
+└── src/commands.rs     # control commands: tag switch, volume, brightness, …
 ```
 
 ### Widget contract
@@ -53,6 +70,8 @@ export default {
     // ctx.options — the options object from config.js
     // ctx.onStats(cb) — subscribe to system stats; returns unsubscribe fn.
     //                   Replays the latest payload on subscribe.
+    // ctx.onEvent(name, cb) — same, for any backend event channel
+    //                         (e.g. "divebar://hlwm" for WM state)
     // ctx.invoke / ctx.listen — raw Tauri IPC for widgets with custom needs
     const el = document.createElement("div");
     el.className = "chip";  // opt into the shared chip look (optional)
@@ -64,11 +83,19 @@ export default {
 To add a widget: drop the file in `src/widgets/` and reference it from
 `config.js`. Nothing else to register.
 
-System data flows one way: `stats.rs` gathers everything on a 2s tick and
-emits a single `divebar://stats` event; the registry fans it out to widgets.
-To expose a new stat, extend the payload in `stats.rs` and read it in your
-widget. Widgets that need more than the shared stream (e.g. reacting to
-clicks by invoking a command) can use `ctx.invoke`/`ctx.listen` directly.
+System data flows one way, over two event channels:
+
+- `divebar://stats` — `stats.rs` polls CPU, memory, battery, volume,
+  brightness, and wifi every 2s. To expose a new stat, extend the payload
+  (add a reader in `readers.rs` if a command also needs it).
+- `divebar://hlwm` — pushed immediately on every WM event (tag switches,
+  focus/title changes) via a persistent `herbstclient --idle` process.
+
+User-initiated controls go the other way as Tauri commands
+(`src-tauri/src/commands.rs`): `hlwm_use_tag`, `adjust_volume`,
+`toggle_mute`, `adjust_brightness`, `launch_wifi_gui`. Commands that change
+a value return the fresh state so widgets update instantly rather than
+waiting for the next poll.
 
 ## Roadmap / non-goals of the prototype
 
@@ -77,5 +104,5 @@ clicks by invoking a command) can use `ctx.invoke`/`ctx.listen` directly.
   meant to be replaced by user-editable, persisted settings later.
 - **Wayland** — space reservation currently uses X11 struts; Wayland support
   would go through `gtk-layer-shell` in `linux.rs`.
-- **More widgets** — workspaces, window title, network, volume, tray.
+- **More widgets** — system tray, media player, notifications.
 - **Multi-monitor** — one bar per monitor.
