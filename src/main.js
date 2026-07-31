@@ -105,12 +105,10 @@ async function renderBar(config) {
     instance.el?.remove();
   }
   mounted = [];
-  for (const zone of ["left", "center", "right"]) {
-    const zoneEl = document.getElementById(`zone-${zone}`);
-    // Mount sequentially within a zone so widget order matches the config.
-    for (const entry of config?.zones?.[zone] ?? []) {
-      await mountWidget(zoneEl, entry);
-    }
+  const barEl = document.getElementById("bar");
+  // Mount sequentially so widget order matches the config.
+  for (const entry of config?.widgets ?? []) {
+    await mountWidget(barEl, entry);
   }
 }
 

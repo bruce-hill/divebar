@@ -20,8 +20,8 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 
 - **workspaces** — herbstluftwm tag switcher (click to switch; live via
   `herbstclient --idle`)
-- **window-title** — focused window title, expands to fill spare space with
-  ellipsis truncation
+- **window-title** — focused window title, expands to fill spare space
+  (flex-grow) with ellipsis truncation; configurable text alignment
 - **wifi** — SSID + signal %; click launches `/usr/local/bin/wifi-gui`
 - **volume** — level via wpctl; click opens a pop-down slider, clicking the
   icon toggles mute
@@ -37,9 +37,10 @@ Also available but not in the default config: **logo**, **cpu**, **memory**.
 
 Config lives in `~/.local/config/divebar/config.json` (created with
 defaults on first run; hand-editable). The settings window — gear icon or
-right-click anywhere on the bar — lets you reorder widgets (within and
-across the three zones), add/remove them, and edit per-widget options.
-Save & Apply re-renders the bar live.
+right-click anywhere on the bar — is a single drag-to-reorder list of the
+bar's widgets (the bar is one flex row; every widget sizes to its content,
+and window-title flex-grows). Add/remove widgets and edit per-widget
+options; every change saves and applies to the bar instantly.
 
 ## Running
 
@@ -64,7 +65,7 @@ scales the bar height to match.
 
 ```
 src/                    # frontend (no bundler)
-├── index.html          # bar shell: three zones (left / center / right)
+├── index.html          # bar shell: a single flex row
 ├── style.css           # bar chrome + shared .chip styling + CSS variables
 ├── main.js             # widget registry: loads config, mounts widgets
 ├── settings.html/js/css# settings window (separate floating dialog)

@@ -142,8 +142,8 @@ pub async fn get_default_config() -> Result<Value, String> {
 #[tauri::command]
 pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), String> {
     use tauri::Emitter;
-    if !config.get("zones").is_some_and(Value::is_object) {
-        return Err("config must have a zones object".into());
+    if !config.get("widgets").is_some_and(Value::is_array) {
+        return Err("config must have a widgets array".into());
     }
     crate::config::save(&config)?;
     app.emit("divebar://config", &config).map_err(|e| e.to_string())
@@ -169,7 +169,7 @@ pub async fn open_settings(
         tauri::WebviewUrl::App("settings.html".into()),
     )
     .title("divebar settings")
-    .inner_size(780.0 * zoom, 640.0 * zoom)
+    .inner_size(560.0 * zoom, 760.0 * zoom)
     .center()
     .build()
     .map_err(|e| e.to_string())?;

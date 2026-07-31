@@ -15,9 +15,19 @@ export default {
       padding: 0 4px;
     }
   `,
-  create({ onEvent }) {
+  settings: [
+    {
+      key: "align",
+      label: "Text alignment",
+      type: "select",
+      choices: ["left", "center", "right"],
+      default: "left",
+    },
+  ],
+  create({ options, onEvent }) {
     const el = document.createElement("div");
     el.className = "widget-window-title";
+    el.style.textAlign = options.align;
 
     const unsubscribe = onEvent("divebar://hlwm", ({ windowTitle }) => {
       el.textContent = windowTitle ?? "";

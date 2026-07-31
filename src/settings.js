@@ -1,24 +1,55 @@
-// Settings window: edit which widgets are in which zone, their order, and
-// their per-widget options. Widget option forms are generated from each
-// widget module's `settings` schema, so widgets fully describe themselves.
+// Settings window: one vertical list of widget rows matching the bar's
+// flex order. Drag rows to reorder, click a row to expand its settings
+// inline, use "+ Add widget" to append, ✕ to remove. Every change saves
+// and applies to the real bar immediately.
 
 import WIDGET_NAMES from "./widgets/index.js";
 
-const ZONES = ["left", "center", "right"];
-
 const modules = {};
-let saved = { zones: { left: [], center: [], right: [] } };
-let state = structuredClone(saved);
-
-const zonesEl = document.getElementById("zones");
-const statusEl = document.getElementById("status");
-
+let state = { widgets: [] };
+let expandedEntry = null;
+let adding = false; // whether the "+ Add widget" picker is open
+let dragData = null; // { index }
 let invoke = null;
 
+const statusEl = document.getElementById("status");
+const sectionsEl = document.getElementById("sections");
+
+const marker = document.createElement("div");
+marker.className = "drop-marker";
+
+// --- Status + persistence --------------------------------------------------
+
+let statusTimer = null;
 function setStatus(text, kind = "") {
   statusEl.textContent = text;
   statusEl.className = kind;
+  statusEl.style.opacity = "1";
+  if (statusTimer) clearTimeout(statusTimer);
+  if (kind === "ok") {
+    statusTimer = setTimeout(() => (statusEl.style.opacity = "0"), 1500);
+  }
 }
+
+let saveTimer = null;
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await invoke("save_config", { config: state });
+      setStatus("Saved ✓", "ok");
+    } catch (err) {
+      setStatus(`Save failed: ${err}`, "error");
+    }
+  }, 250);
+}
+
+function mutated() {
+  render();
+  scheduleSave();
+}
+
+// --- Helpers ---------------------------------------------------------------
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -26,6 +57,14 @@ function el(tag, className, text) {
   if (text != null) node.textContent = text;
   return node;
 }
+
+function endDrag() {
+  dragData = null;
+  document.body.classList.remove("dragging");
+  marker.remove();
+}
+
+// --- Widget rows -----------------------------------------------------------
 
 function settingInput(schema, entry) {
   const current = entry.options?.[schema.key] ?? schema.default;
@@ -36,6 +75,7 @@ function settingInput(schema, entry) {
     input.checked = Boolean(current);
     input.addEventListener("change", () => {
       (entry.options ??= {})[schema.key] = input.checked;
+      scheduleSave();
     });
   } else if (schema.type === "select") {
     input = el("select");
@@ -47,6 +87,7 @@ function settingInput(schema, entry) {
     input.value = current;
     input.addEventListener("change", () => {
       (entry.options ??= {})[schema.key] = input.value;
+      scheduleSave();
     });
   } else if (schema.type === "number") {
     input = el("input");
@@ -61,6 +102,7 @@ function settingInput(schema, entry) {
       if (schema.max != null) v = Math.min(schema.max, v);
       input.value = v;
       (entry.options ??= {})[schema.key] = v;
+      scheduleSave();
     });
   } else {
     input = el("input");
@@ -68,72 +110,125 @@ function settingInput(schema, entry) {
     input.value = current ?? "";
     input.addEventListener("change", () => {
       (entry.options ??= {})[schema.key] = input.value;
+      scheduleSave();
     });
   }
   return input;
 }
 
-function widgetCard(zone, list, entry, index) {
-  const card = el("div", "card");
-  const header = el("div", "card-header");
-  header.append(el("span", "name", entry.widget));
-
-  const up = el("button", "icon-btn", "▲");
-  up.title = "Move up";
-  up.disabled = index === 0;
-  up.addEventListener("click", () => {
-    [list[index - 1], list[index]] = [list[index], list[index - 1]];
-    render();
-  });
-
-  const down = el("button", "icon-btn", "▼");
-  down.title = "Move down";
-  down.disabled = index === list.length - 1;
-  down.addEventListener("click", () => {
-    [list[index], list[index + 1]] = [list[index + 1], list[index]];
-    render();
-  });
-
-  const zoneSelect = el("select");
-  zoneSelect.title = "Zone";
-  for (const z of ZONES) {
-    const opt = el("option", "", z);
-    opt.value = z;
-    zoneSelect.append(opt);
-  }
-  zoneSelect.value = zone;
-  zoneSelect.addEventListener("change", () => {
-    list.splice(index, 1);
-    (state.zones[zoneSelect.value] ??= []).push(entry);
-    render();
-  });
-
-  const remove = el("button", "icon-btn remove", "✕");
-  remove.title = "Remove";
-  remove.addEventListener("click", () => {
-    list.splice(index, 1);
-    render();
-  });
-
-  header.append(up, down, zoneSelect, remove);
-  card.append(header);
-
+function rowFor(entry, index) {
+  const row = el("div", "row");
   const schemas = modules[entry.widget]?.settings ?? [];
+  const expanded = entry === expandedEntry;
+  if (expanded) row.classList.add("expanded");
+
+  const main = el("div", "row-main");
+  main.draggable = true;
+  main.append(el("span", "handle", "⠿"));
+  main.append(el("span", "name", entry.widget));
   if (schemas.length > 0) {
-    const settings = el("div", "card-settings");
-    for (const schema of schemas) {
-      const row = el("div", "setting-row");
-      row.append(el("label", "", schema.label ?? schema.key));
-      row.append(settingInput(schema, entry));
-      settings.append(row);
-    }
-    card.append(settings);
+    main.append(el("span", "badge", `${schemas.length} setting${schemas.length > 1 ? "s" : ""}`));
   }
-  return card;
+  main.append(el("span", "chev", "▶"));
+
+  const x = el("span", "x", "✕");
+  x.title = "Remove";
+  x.addEventListener("click", (e) => {
+    e.stopPropagation();
+    state.widgets.splice(index, 1);
+    if (entry === expandedEntry) expandedEntry = null;
+    mutated();
+  });
+  main.append(x);
+
+  main.addEventListener("click", () => {
+    expandedEntry = expanded ? null : entry;
+    render();
+  });
+
+  main.addEventListener("dragstart", (e) => {
+    dragData = { index };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", entry.widget);
+    document.body.classList.add("dragging");
+    requestAnimationFrame(() => row.classList.add("ghost"));
+  });
+  main.addEventListener("dragend", () => {
+    row.classList.remove("ghost");
+    endDrag();
+  });
+
+  row.append(main);
+
+  if (expanded) {
+    const settings = el("div", "row-settings");
+    if (schemas.length === 0) {
+      settings.append(el("span", "none", "This widget has no configurable settings."));
+    } else {
+      for (const schema of schemas) {
+        const srow = el("div", "setting-row");
+        srow.append(el("label", "", schema.label ?? schema.key));
+        srow.append(settingInput(schema, entry));
+        settings.append(srow);
+      }
+    }
+    row.append(settings);
+  }
+  return row;
 }
 
-function addRow(zone) {
-  const row = el("div", "add-row");
+// Insertion index from the pointer position among a list's rows.
+function dropIndex(rowsEl, clientY) {
+  const rows = [...rowsEl.querySelectorAll(".row")];
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect();
+    if (clientY < rect.top + rect.height / 2) return i;
+  }
+  return rows.length;
+}
+
+function setupRowsDnD(rowsEl) {
+  rowsEl.addEventListener("dragover", (e) => {
+    if (!dragData) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const index = dropIndex(rowsEl, e.clientY);
+    const rows = [...rowsEl.querySelectorAll(".row")];
+    rowsEl.insertBefore(marker, rows[index] ?? null);
+  });
+
+  rowsEl.addEventListener("dragleave", (e) => {
+    if (!rowsEl.contains(e.relatedTarget) && marker.parentElement === rowsEl) {
+      marker.remove();
+    }
+  });
+
+  rowsEl.addEventListener("drop", (e) => {
+    if (!dragData) return;
+    e.preventDefault();
+    let index = dropIndex(rowsEl, e.clientY);
+    const [entry] = state.widgets.splice(dragData.index, 1);
+    if (dragData.index < index) index--;
+    state.widgets.splice(index, 0, entry);
+    endDrag();
+    mutated();
+  });
+}
+
+// --- Add widget ------------------------------------------------------------
+
+function addControls() {
+  const wrap = el("div", "add-row");
+  if (!adding) {
+    const btn = el("button", "", "＋ Add widget");
+    btn.addEventListener("click", () => {
+      adding = true;
+      render();
+    });
+    wrap.append(btn);
+    return wrap;
+  }
+
   const select = el("select");
   for (const name of WIDGET_NAMES) {
     if (!modules[name]) continue;
@@ -141,50 +236,48 @@ function addRow(zone) {
     opt.value = name;
     select.append(opt);
   }
-  const btn = el("button", "", "Add");
-  btn.addEventListener("click", () => {
-    (state.zones[zone] ??= []).push({ widget: select.value, options: {} });
+  const add = el("button", "", "Add");
+  add.addEventListener("click", () => {
+    const entry = { widget: select.value, options: {} };
+    state.widgets.push(entry);
+    expandedEntry = entry;
+    adding = false;
+    mutated();
+  });
+  const cancel = el("button", "", "Cancel");
+  cancel.addEventListener("click", () => {
+    adding = false;
     render();
   });
-  row.append(select, btn);
-  return row;
+  wrap.append(select, add, cancel);
+  return wrap;
 }
+
+// --- Render + init ---------------------------------------------------------
 
 function render() {
-  zonesEl.replaceChildren();
-  for (const zone of ZONES) {
-    const col = el("div", "zone-col");
-    col.append(el("h2", "", zone));
-    const list = (state.zones[zone] ??= []);
-    list.forEach((entry, i) => col.append(widgetCard(zone, list, entry, i)));
-    col.append(addRow(zone));
-    zonesEl.append(col);
-  }
+  sectionsEl.replaceChildren();
+  const section = el("section");
+  section.append(el("h2", "", "Widgets (bar order, left to right)"));
+  const rowsEl = el("div", "rows");
+  const list = (state.widgets ??= []);
+  list.forEach((entry, i) => rowsEl.append(rowFor(entry, i)));
+  rowsEl.classList.toggle("empty", list.length === 0);
+  setupRowsDnD(rowsEl);
+  section.append(rowsEl);
+  section.append(addControls());
+  sectionsEl.append(section);
 }
-
-document.getElementById("save").addEventListener("click", async () => {
-  try {
-    await invoke("save_config", { config: state });
-    saved = structuredClone(state);
-    setStatus("Saved and applied ✓", "ok");
-  } catch (err) {
-    setStatus(`Save failed: ${err}`, "error");
-  }
-});
-
-document.getElementById("revert").addEventListener("click", () => {
-  state = structuredClone(saved);
-  render();
-  setStatus("Reverted to last saved config");
-});
 
 document.getElementById("reset").addEventListener("click", async () => {
   try {
     state = await invoke("get_default_config");
-    render();
-    setStatus("Defaults loaded — Save & Apply to keep them");
+    expandedEntry = null;
+    adding = false;
+    mutated();
+    setStatus("Reset to defaults");
   } catch (err) {
-    setStatus(`Loading defaults failed: ${err}`, "error");
+    setStatus(`Reset failed: ${err}`, "error");
   }
 });
 
@@ -194,7 +287,6 @@ async function init() {
   }
   invoke = window.__TAURI__.core.invoke;
 
-  // Load widget modules for their names + settings schemas.
   for (const name of WIDGET_NAMES) {
     try {
       modules[name] = (await import(`./widgets/${name}.js`)).default;
@@ -203,14 +295,14 @@ async function init() {
     }
   }
 
-  saved = await invoke("get_config");
-  state = structuredClone(saved);
+  state = await invoke("get_config");
+  state.widgets ??= [];
   render();
 }
 
 init().catch((err) => {
   console.error("divebar settings: init failed", err);
-  render(); // show the (empty) zone scaffolding at least
+  render();
   setStatus(`Failed to load settings: ${err}`, "error");
 });
 

@@ -36,11 +36,13 @@ body {
   background: transparent;
 }
 
+/* One flex row: every widget sizes to its content; anything that should
+   absorb spare space (window-title by default) sets flex-grow itself. */
 #bar {
   height: var(--bar-height);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 0 10px;
   background: var(--bar-bg);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
@@ -48,19 +50,6 @@ body {
   font-family: var(--font);
   font-size: 19px;
 }
-
-.zone {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-/* The left zone absorbs all spare width so widgets in it (window title)
-   can expand; center/right stay at their natural size. */
-#zone-left   { justify-content: flex-start; flex: 1; }
-#zone-center { justify-content: center; }
-#zone-right  { justify-content: flex-end; }
 
 /* Shared look for widgets that opt into the "chip" class */
 .chip {

@@ -17,22 +17,17 @@ pub fn config_file() -> PathBuf {
 
 pub fn default_config() -> Value {
     json!({
-        "zones": {
-            "left": [
-                { "widget": "workspaces", "options": {} },
-                { "widget": "window-title", "options": {} },
-            ],
-            "center": [],
-            "right": [
-                { "widget": "wifi", "options": {} },
-                { "widget": "volume", "options": {} },
-                { "widget": "brightness", "options": {} },
-                { "widget": "battery", "options": {} },
-                { "widget": "date", "options": {} },
-                { "widget": "time", "options": {} },
-                { "widget": "settings", "options": {} },
-            ],
-        }
+        "widgets": [
+            { "widget": "workspaces", "options": {} },
+            { "widget": "window-title", "options": {} },
+            { "widget": "wifi", "options": {} },
+            { "widget": "volume", "options": {} },
+            { "widget": "brightness", "options": {} },
+            { "widget": "battery", "options": {} },
+            { "widget": "date", "options": {} },
+            { "widget": "time", "options": {} },
+            { "widget": "settings", "options": {} },
+        ]
     })
 }
 
@@ -40,7 +35,20 @@ pub fn load() -> Value {
     let path = config_file();
     match std::fs::read_to_string(&path) {
         Ok(contents) => match serde_json::from_str::<Value>(&contents) {
-            Ok(v) if v.get("zones").is_some_and(Value::is_object) => v,
+            Ok(v) if v.get("widgets").is_some_and(Value::is_array) => v,
+            // Migrate the old zoned format: flatten left, center, right.
+            Ok(v) if v.get("zones").is_some_and(Value::is_object) => {
+                let zones = &v["zones"];
+                let mut widgets = Vec::new();
+                for zone in ["left", "center", "right"] {
+                    if let Some(entries) = zones.get(zone).and_then(Value::as_array) {
+                        widgets.extend(entries.iter().cloned());
+                    }
+                }
+                let migrated = json!({ "widgets": widgets });
+                let _ = save(&migrated);
+                migrated
+            }
             _ => {
                 eprintln!(
                     "divebar: invalid config at {}, using defaults",

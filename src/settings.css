@@ -24,37 +24,50 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 21px;
   height: 100vh;
   display: flex;
   flex-direction: column;
+  user-select: none;
 }
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  gap: 10px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
 }
 
 h1 {
-  font-size: 16px;
+  font-size: 22px;
   font-weight: 600;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
 }
+
+#status {
+  font-size: 18px;
+  color: var(--fg-dim);
+  transition: opacity 300ms ease;
+}
+
+#status.ok    { color: #9ece6a; }
+#status.error { color: var(--critical); }
 
 button {
   font: inherit;
+  font-size: 20px;
   color: var(--fg);
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   cursor: pointer;
 }
 
@@ -62,89 +75,164 @@ button:hover {
   background: var(--panel-hover);
 }
 
-button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #10121a;
-  font-weight: 600;
-}
-
-button.icon-btn {
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 13px;
-}
-
 main {
   flex: 1;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
-  padding: 16px 18px;
-  align-items: start;
+  padding: 14px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.zone-col > h2 {
-  font-size: 12px;
+section > h2 {
+  font-size: 16px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   color: var(--fg-dim);
-  margin-bottom: 10px;
-}
-
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
   margin-bottom: 8px;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+/* --- Widget rows ----------------------------------------------------------- */
 
-.card-header .name {
-  flex: 1;
-  font-weight: 600;
-}
-
-.card-header select {
-  margin-left: 2px;
-}
-
-.card .remove {
-  color: var(--critical);
-}
-
-.card-settings {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+.rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-height: 20px;
+  border-radius: 8px;
+}
+
+body.dragging .rows {
+  outline: 1px dashed rgba(122, 162, 247, 0.35);
+  outline-offset: 3px;
+}
+
+.rows.empty {
+  min-height: 34px;
+  outline: 1px dashed rgba(255, 255, 255, 0.1);
+  outline-offset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rows.empty::after {
+  content: "empty — drag widgets here or add below";
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 18px;
+}
+
+.row {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.row.ghost { opacity: 0.4; }
+
+.row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: grab;
+}
+
+.row-main:hover {
+  background: var(--panel-hover);
+  border-radius: 8px;
+}
+
+.row .handle {
+  color: var(--fg-dim);
+  font-size: 21px;
+  letter-spacing: -1px;
+}
+
+.row .name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.row .badge {
+  font-size: 16px;
+  color: var(--fg-dim);
+}
+
+.row .x {
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 20px;
+}
+
+.row .x:hover {
+  color: var(--critical);
+  background: rgba(247, 118, 142, 0.12);
+}
+
+.row .chev {
+  color: var(--fg-dim);
+  font-size: 16px;
+  transition: transform 150ms ease;
+}
+
+.row.expanded .chev {
+  transform: rotate(90deg);
+}
+
+/* Inline settings under an expanded row */
+.row-settings {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.row-settings .none {
+  color: var(--fg-dim);
+  font-size: 20px;
 }
 
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .setting-row label {
-  color: var(--fg-dim);
+  color: var(--fg);
+  font-size: 20px;
 }
+
+/* Drop insertion marker */
+.drop-marker {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  margin: -1px 4px;
+}
+
+/* --- Add widget row -------------------------------------------------------- */
+
+.add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.add-row select { flex: 1; }
+
+/* --- Form controls --------------------------------------------------------- */
 
 input[type="number"],
 select {
   font: inherit;
-  font-size: 13px;
+  font-size: 20px;
   color: var(--fg);
   background-color: var(--bg);
   border: 1px solid var(--border);
@@ -168,38 +256,10 @@ select option {
   color: var(--fg);
 }
 
-input[type="number"] {
-  width: 76px;
-}
+input[type="number"] { width: 96px; }
 
 input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--accent);
-}
-
-.add-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.add-row select {
-  flex: 1;
-}
-
-footer {
-  padding: 10px 18px;
-  border-top: 1px solid var(--border);
-  color: var(--fg-dim);
-  font-size: 13px;
-  min-height: 38px;
-}
-
-footer.ok {
-  color: #9ece6a;
-}
-
-footer.error {
-  color: var(--critical);
 }
