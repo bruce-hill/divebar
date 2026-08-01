@@ -1,8 +1,10 @@
-// Drives createPopup through its interface: a fake invoke records the
-// set_popup_open traffic, fake timers drive the pointer-leave close path.
+// Drives createPopup through its interface: a fake invoke behind the
+// Coordinator records the set_popup_open traffic, fake timers drive the
+// pointer-leave close path.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createPopup } from "../src/lib/popup.js";
+import { initCoordinator, claim, release } from "../src/lib/coordinator.js";
 
 function fakeInvoke() {
   const invoke = vi.fn(() => Promise.resolve());
@@ -21,11 +23,18 @@ function makeAnchor() {
 
 const flushMicrotasks = () => Promise.resolve();
 
+let invoke;
+
 beforeEach(() => {
   vi.useFakeTimers();
+  invoke = fakeInvoke();
+  initCoordinator(invoke);
 });
 
 afterEach(async () => {
+  // Leave the popup space empty for the next test.
+  initCoordinator(() => Promise.resolve());
+  release(claim({ el: document.createElement("div"), kind: "popup" }));
   vi.useRealTimers();
   await flushMicrotasks();
   document.body.replaceChildren();
@@ -33,13 +42,11 @@ afterEach(async () => {
 
 describe("createPopup", () => {
   it("open() renders the body into a .dpanel and widens the shape", () => {
-    const invoke = fakeInvoke();
     const render = vi.fn((el, greeting) => {
       el.textContent = greeting;
     });
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render,
     });
@@ -62,10 +69,8 @@ describe("createPopup", () => {
   });
 
   it("close() removes the panel and shrinks the shape", async () => {
-    const invoke = fakeInvoke();
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render: () => {},
     });
@@ -80,11 +85,9 @@ describe("createPopup", () => {
   });
 
   it("toggle() forwards args to render and round-trips", () => {
-    const invoke = fakeInvoke();
     const render = vi.fn();
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render,
     });
@@ -96,13 +99,11 @@ describe("createPopup", () => {
   });
 
   it("a pointerdown outside closes; inside the popup or anchor does not", () => {
-    const invoke = fakeInvoke();
     const anchor = makeAnchor();
     const outside = document.createElement("div");
     document.body.appendChild(outside);
     const popup = createPopup({
       anchor,
-      invoke,
       className: "dtest",
       render: () => {},
     });
@@ -118,10 +119,8 @@ describe("createPopup", () => {
   });
 
   it("closes when the pointer leaves for longer than leaveDelay", () => {
-    const invoke = fakeInvoke();
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render: () => {},
       leaveDelay: 700,
@@ -145,11 +144,9 @@ describe("createPopup", () => {
   });
 
   it("holdOpen re-arms the leave timer instead of closing", () => {
-    const invoke = fakeInvoke();
     let dragging = true;
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render: () => {},
       leaveDelay: 700,
@@ -168,13 +165,11 @@ describe("createPopup", () => {
   });
 
   it("onClose fires however the popup closes", () => {
-    const invoke = fakeInvoke();
     const onClose = vi.fn();
     const outside = document.createElement("div");
     document.body.appendChild(outside);
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render: () => {},
       onClose,
@@ -190,16 +185,13 @@ describe("createPopup", () => {
   });
 
   it("opening a second popup closes the first (shared shape)", () => {
-    const invoke = fakeInvoke();
     const a = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "da",
       render: () => {},
     });
     const b = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "db",
       render: () => {},
     });
@@ -208,23 +200,23 @@ describe("createPopup", () => {
     b.open();
     expect(a.isOpen()).toBe(false);
     expect(b.isOpen()).toBe(true);
+    // The eviction never shrank the shape b now owns.
+    expect(invoke.shapeCalls().filter((s) => !s.open)).toHaveLength(0);
   });
 
-  it("refreshShape() re-sends the rect while open, and not after close", () => {
-    const invoke = fakeInvoke();
+  it("a content resize re-sends the shape while open, and not after close", () => {
     const popup = createPopup({
       anchor: makeAnchor(),
-      invoke,
       className: "dtest",
       render: () => {},
     });
 
     popup.open();
-    popup.refreshShape();
-    expect(invoke.shapeCalls().filter((c) => c.open)).toHaveLength(2);
+    ResizeObserver.trigger();
+    expect(invoke.shapeCalls().filter((s) => s.open)).toHaveLength(2);
 
     popup.close();
-    popup.refreshShape();
+    ResizeObserver.trigger();
     expect(invoke.shapeCalls().at(-1)).toEqual({ open: false, rect: null });
   });
 });

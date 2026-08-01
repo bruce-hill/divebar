@@ -13,6 +13,7 @@
 // (onStats/onEvent return an unsubscribe fn and replay the latest payload;
 // options come pre-merged with the schema's defaults).
 
+import { initCoordinator } from "./lib/coordinator.js";
 import { initTooltips } from "./lib/tooltip.js";
 import { applyBarStyle } from "./lib/bar-config.js";
 import { openWidgetSettings } from "./lib/widget-settings-popup.js";
@@ -21,7 +22,8 @@ import { createLayoutEditor } from "./lib/layout-edit.js";
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
-initTooltips(invoke);
+initCoordinator(invoke);
+initTooltips();
 
 // Adapt styling to the environment: without a compositor, shaped windows
 // can't have soft shadows or rounded transparent corners.

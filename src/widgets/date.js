@@ -22,11 +22,11 @@ export default {
   settings: [
     { key: "showYear", label: "Show year", type: "boolean", default: false },
   ],
-  create({ options, invoke }) {
+  create({ options }) {
     const el = document.createElement("div");
     el.className = "chip clickable widget-date";
     el.style.cursor = "pointer";
-    const popup = createCalendarPopup({ anchor: el, invoke });
+    const popup = createCalendarPopup({ anchor: el });
     el.addEventListener("click", () => popup.toggle());
     const textEl = document.createElement("span");
     textEl.className = "text";

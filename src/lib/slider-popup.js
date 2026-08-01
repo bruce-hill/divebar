@@ -64,7 +64,7 @@ let stylesInjected = false;
 
 // createLeading (optional): called on each open; returns an element placed
 // before the slider (e.g. a mute toggle button).
-export function createSliderPopup({ anchor, invoke, onChange, createLeading }) {
+export function createSliderPopup({ anchor, onChange, createLeading }) {
   if (!stylesInjected) {
     stylesInjected = true;
     const style = document.createElement("style");
@@ -99,7 +99,6 @@ export function createSliderPopup({ anchor, invoke, onChange, createLeading }) {
 
   const popup = createPopup({
     anchor,
-    invoke,
     className: "dpopup",
     leaveDelay: 700,
     holdOpen: () => dragging,

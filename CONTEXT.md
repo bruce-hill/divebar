@@ -24,17 +24,26 @@ invent synonyms.
 - **Shape** — the X11 input region/bounding region of the bar window,
   extended to cover an open panel via the `set_popup_open` command and
   shrunk back on close. Singular: the whole window has one shape, which
-  is why at most one popup may be open.
+  is why at most one panel may hold the popup space. Only the
+  Coordinator calls `set_popup_open`.
 - **Panel** — anything rendered in the popup space (popup or tooltip).
-  Shared panel mechanics (centering under an anchor, animation, shape
-  sync) live in `src/lib/panel.js`.
+  Pure DOM helpers (centering under an anchor, animation) live in
+  `src/lib/panel.js`.
 - **Popup** — an interactive panel (slider, tray menu, calendar) owned by
   `src/lib/popup.js`'s `createPopup`, which handles chrome, dismissal,
-  and coordination. Callers supply only a body via `render()`.
-- **Coordinator** — `src/lib/popup-state.js`; enforces at-most-one open
-  popup because popups share the single Shape.
+  and claiming the popup space. Callers supply only a body via
+  `render()`.
+- **Coordinator** — `src/lib/coordinator.js`; owns the popup space.
+  Panels claim it (popup beats tooltip, same kind evicts, a tooltip
+  claim against an open popup is denied) and the Coordinator makes
+  every `set_popup_open` call — placing the panel and re-syncing the
+  Shape whenever the claimed element resizes.
+- **Claim** — a participant's tenancy of the popup space, returned by
+  the Coordinator's `claim()` and ended by `release()` or eviction
+  (which runs the claim's `onEvict` and makes its `release()` a no-op).
 - **Tooltip** — a passive panel (`src/lib/tooltip.js`): no dismissal
-  logic, never owns the Coordinator slot, yields to popups. Fed by the
+  chrome; claims the popup space as a yielding participant — denied
+  while a popup is open, evicted the moment one opens. Fed by the
   standard `title` attribute, intercepted on hover.
 - **Layout editor** — the in-place edit mode on the bar
   (`src/lib/layout-edit.js`): widget interactions are suppressed,

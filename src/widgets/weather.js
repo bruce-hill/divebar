@@ -179,7 +179,7 @@ export default {
       default: "",
     },
   ],
-  create({ options, onEvent, invoke }) {
+  create({ options, onEvent }) {
     const el = document.createElement("div");
     el.className = "chip clickable widget-weather";
     el.style.cursor = "pointer";
@@ -198,7 +198,6 @@ export default {
 
     const popup = createPopup({
       anchor: el,
-      invoke,
       className: "wxcast",
       render(body) {
         const useF = options.units === "fahrenheit";

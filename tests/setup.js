@@ -6,9 +6,22 @@ Element.prototype.animate = function () {
   return anim;
 };
 
-// jsdom has no ResizeObserver; popup.js only needs observe/disconnect
-// (jsdom never resizes anything, so the callback would never fire anyway).
-globalThis.ResizeObserver ??= class {
-  observe() {}
-  disconnect() {}
+// jsdom has no ResizeObserver; the Coordinator uses one to re-place a
+// claimed panel and re-send the shape when its content resizes. jsdom never
+// resizes anything, so tests fire it by hand: ResizeObserver.trigger()
+// invokes every currently-observing observer's callback.
+const activeObservers = new Set();
+globalThis.ResizeObserver = class ResizeObserver {
+  constructor(cb) {
+    this.cb = cb;
+  }
+  observe() {
+    activeObservers.add(this);
+  }
+  disconnect() {
+    activeObservers.delete(this);
+  }
+  static trigger() {
+    for (const observer of [...activeObservers]) observer.cb([]);
+  }
 };

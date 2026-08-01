@@ -63,7 +63,6 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
 
   const popup = createPopup({
     anchor,
-    invoke,
     className: "dmenu",
     render(el) {
       buildItems(el, items);
@@ -106,7 +105,6 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
         btn.addEventListener("click", () => {
           sub.classList.toggle("open");
           arrow.textContent = sub.classList.contains("open") ? "▾" : "▸";
-          popup.refreshShape(); // popup size changed; update the window shape
         });
         container.append(btn, sub);
       } else {

@@ -1,14 +1,15 @@
 // Pop-down popup panels (sliders, menus, calendar). One module owns the
-// whole popup lifecycle: panel chrome, positioning, animation, dismissal
-// (click-outside + pointer-leave timer), the at-most-one-open coordinator,
-// and the backend X11 shape. Callers supply only their body via render().
+// whole popup lifecycle: panel chrome, positioning, animation, and
+// dismissal (click-outside + pointer-leave timer). The popup space itself
+// — at-most-one-open and the backend X11 shape — is claimed from the
+// Coordinator, which also keeps the shape synced when content resizes.
+// Callers supply only their body via render().
 //
-//   const popup = createPopup({ anchor, invoke, className, render });
+//   const popup = createPopup({ anchor, className, render });
 //   popup.toggle();               // args are forwarded to render()
-//   popup.refreshShape();         // call after content changes size
 
-import { popupWillOpen, popupDidClose } from "./popup-state.js";
-import { centerUnder, animateIn, animateOut, sendShape, clearShape } from "./panel.js";
+import { claim, release } from "./coordinator.js";
+import { centerUnder, animateIn, animateOut } from "./panel.js";
 
 const CSS = `
   .dpanel {
@@ -36,12 +37,12 @@ let stylesInjected = false;
 // holdOpen (optional): while it returns true, the pointer-leave timer
 // re-arms instead of closing (e.g. mid-drag on a slider).
 // place (optional): positions the panel, replacing the default
-// centered-under-the-anchor placement; re-run when the content resizes.
+// centered-under-the-anchor placement; the Coordinator re-runs it
+// whenever the content resizes.
 // onClose (optional): runs whenever the popup closes, by any path —
 // for callers whose state must outlive a single open/close cycle.
 export function createPopup({
   anchor,
-  invoke,
   className,
   render,
   holdOpen,
@@ -58,7 +59,7 @@ export function createPopup({
   }
 
   let el = null;
-  let sizeObserver = null;
+  let spaceClaim = null;
 
   // Close when the pointer wanders away from both the popup and its anchor.
   // This is the main close path without a compositor, where clicks outside
@@ -82,51 +83,43 @@ export function createPopup({
 
   function open(...args) {
     if (el) return;
-    popupWillOpen(close);
 
     el = document.createElement("div");
     el.className = `dpanel ${className}`;
     render(el, ...args);
     document.body.appendChild(el);
     animateIn(el);
-    const position = (target) => {
-      if (place) place(target);
-      else if (anchor.isConnected) centerUnder(target, anchor);
-    };
-    position(el);
+
+    // A "popup" claim always wins: it evicts any open popup or tooltip.
+    spaceClaim = claim({
+      el,
+      kind: "popup",
+      place: (target) => {
+        if (place) place(target);
+        else if (anchor.isConnected) centerUnder(target, anchor);
+      },
+      onEvict: close,
+    });
 
     document.addEventListener("pointerdown", onDocDown, true);
     el.addEventListener("pointerenter", disarm);
     el.addEventListener("pointerleave", arm);
     anchor.addEventListener("pointerenter", disarm);
     anchor.addEventListener("pointerleave", arm);
-
-    sendShape(invoke, el);
-
-    // Content that arrives after open (async status lines, font lists,
-    // expanding submenus) resizes the popup; keep its position and the
-    // backend window shape in sync or the new extent renders clipped.
-    const opened = el;
-    sizeObserver = new ResizeObserver(() => {
-      position(opened);
-      sendShape(invoke, opened);
-    });
-    sizeObserver.observe(el);
   }
 
   function close() {
     if (!el) return;
     disarm();
-    sizeObserver?.disconnect();
-    sizeObserver = null;
     document.removeEventListener("pointerdown", onDocDown, true);
     anchor.removeEventListener("pointerenter", disarm);
     anchor.removeEventListener("pointerleave", arm);
     const closingEl = el;
     el = null;
-    popupDidClose(close);
+    const c = spaceClaim;
+    spaceClaim = null;
     animateOut(closingEl);
-    clearShape(invoke);
+    release(c); // no-op if this popup was evicted by a newer claim
     onClose?.();
   }
 
@@ -135,8 +128,5 @@ export function createPopup({
     close,
     toggle: (...args) => (el ? close() : open(...args)),
     isOpen: () => el !== null,
-    refreshShape: () => {
-      if (el) sendShape(invoke, el);
-    },
   };
 }

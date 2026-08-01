@@ -207,7 +207,6 @@ export function createLayoutEditor({ barEl, invoke, getConfig, entryFor }) {
   function buildToolbar() {
     return createPopup({
       anchor: barEl,
-      invoke,
       className: "layout-toolbar",
       holdOpen: () => true, // never auto-close on pointer-leave
       onClose: teardown,

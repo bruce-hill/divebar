@@ -5,11 +5,12 @@
 // tooltips for free (the attribute is stashed to data-tip so the native
 // one never shows).
 //
-// Not a popup (no dismissal, no coordinator slot — it yields to real
-// popups instead), but it shares the panel mechanics from panel.js.
+// Claims the popup space as a yielding "tooltip" participant: denied
+// while a popup is open, evicted the moment one opens. No dismissal
+// chrome of its own beyond hover/pointerdown hiding.
 
-import { hasOpenPopup } from "./popup-state.js";
-import { centerUnder, animateIn, sendShape, clearShape } from "./panel.js";
+import { claim, release } from "./coordinator.js";
+import { centerUnder, animateIn } from "./panel.js";
 
 const SHOW_DELAY_MS = 350;
 
@@ -39,16 +40,16 @@ const CSS = `
   }
 `;
 
-export function initTooltips(invoke) {
+export function initTooltips() {
   const style = document.createElement("style");
   style.dataset.lib = "tooltip";
   style.textContent = CSS;
   document.head.appendChild(style);
 
   let tipEl = null;
+  let tipClaim = null;
   let showTimer = null;
   let currentTarget = null;
-  let shapeOpen = false;
 
   // Widgets re-set el.title on every data refresh; keep stashing it while
   // hovered so the native tooltip never appears, and live-update ours.
@@ -74,23 +75,30 @@ export function initTooltips(invoke) {
     if (tipEl) {
       tipEl.remove();
       tipEl = null;
-      // Don't shrink the shape if a real popup owns it now.
-      if (shapeOpen && !hasOpenPopup()) clearShape(invoke);
-      shapeOpen = false;
+      release(tipClaim); // no-op if a popup evicted us and owns the shape
+      tipClaim = null;
     }
   }
 
   function show(target, text) {
-    if (hasOpenPopup()) return;
     tipEl?.remove();
     tipEl = document.createElement("div");
     tipEl.className = "dtooltip";
     tipEl.textContent = text;
     document.body.appendChild(tipEl);
-    centerUnder(tipEl, target);
+    tipClaim = claim({
+      el: tipEl,
+      kind: "tooltip",
+      place: (el) => centerUnder(el, target),
+      onEvict: hide,
+    });
+    if (!tipClaim) {
+      // A popup owns the space; yield.
+      tipEl.remove();
+      tipEl = null;
+      return;
+    }
     animateIn(tipEl, { dy: -4, duration: 120 });
-    shapeOpen = true;
-    sendShape(invoke, tipEl);
   }
 
   document.addEventListener("pointerover", (e) => {

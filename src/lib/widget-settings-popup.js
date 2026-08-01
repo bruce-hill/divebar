@@ -157,7 +157,6 @@ export function openWidgetSettings({
   let bodyEl = null;
   const popup = createPopup({
     anchor,
-    invoke,
     className: "dwset",
     place: x != null ? (el) => placeAtX(el, x) : undefined,
     // Keep the popup open while a control that needs sustained focus is

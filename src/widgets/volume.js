@@ -93,7 +93,6 @@ export default {
 
     const popup = createSliderPopup({
       anchor: el,
-      invoke,
       onChange: async (percent) => {
         try {
           render(await invoke("set_volume", { percent }));

@@ -5,7 +5,11 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createLayoutEditor, reorderTarget } from "../src/lib/layout-edit.js";
+import { initCoordinator } from "../src/lib/coordinator.js";
 import WIDGET_NAMES from "../src/widgets/index.js";
+
+// The editor's toolbar popup claims the popup space through the Coordinator.
+initCoordinator(() => Promise.resolve());
 
 function stubRect(el, left, width) {
   el.getBoundingClientRect = () => ({

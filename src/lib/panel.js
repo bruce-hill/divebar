@@ -1,7 +1,6 @@
-// Shared mechanics for anything rendered in the popup space below the bar
-// (popups and tooltips): centering under an anchor, open/close animation,
-// and syncing the backend's X11 shape via set_popup_open. This is the one
-// place that talks to set_popup_open.
+// Pure DOM helpers shared by anything rendered in the popup space below
+// the bar (popups and tooltips): centering under an anchor and open/close
+// animation. Shape syncing lives in the Coordinator (coordinator.js).
 
 export function centerUnder(el, anchor) {
   const rect = anchor.getBoundingClientRect();
@@ -35,18 +34,4 @@ export function animateOut(el, { dy = -6, duration = 110 } = {}) {
     { duration, easing: "ease-in" },
   );
   anim.onfinish = () => el.remove();
-}
-
-export function sendShape(invoke, el) {
-  const r = el.getBoundingClientRect();
-  invoke("set_popup_open", {
-    open: true,
-    rect: { x: r.x, y: r.y, width: r.width, height: r.height },
-  }).catch((err) => console.error("divebar: set_popup_open failed", err));
-}
-
-export function clearShape(invoke) {
-  invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
-    console.error("divebar: set_popup_open failed", err),
-  );
 }

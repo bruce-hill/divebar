@@ -60,7 +60,7 @@ const CSS = `
 
 let stylesInjected = false;
 
-export function createCalendarPopup({ anchor, invoke }) {
+export function createCalendarPopup({ anchor }) {
   if (!stylesInjected) {
     stylesInjected = true;
     const style = document.createElement("style");
@@ -130,12 +130,10 @@ export function createCalendarPopup({ anchor, invoke }) {
       viewYear++;
     }
     renderMonth();
-    popup.refreshShape();
   }
 
   const popup = createPopup({
     anchor,
-    invoke,
     className: "dcal",
     render(el) {
       const now = new Date();
