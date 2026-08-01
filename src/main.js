@@ -181,6 +181,7 @@ document.addEventListener("contextmenu", (e) => {
   openWidgetSettings({
     anchor: m.instance.el,
     invoke,
+    x: e.clientX,
     title: m.widget.name,
     schemas: m.widget.settings ?? [],
     options: {

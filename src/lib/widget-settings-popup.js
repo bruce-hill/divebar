@@ -5,6 +5,7 @@
 // via onChange(key, value).
 
 import { createPopup } from "./popup.js";
+import { placeAtX } from "./panel.js";
 import { createSettingInput } from "./setting-inputs.js";
 
 const SELECT_ARROW = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="%239aa3b2" stroke-width="1.5" stroke-linecap="round"/></svg>')`;
@@ -131,6 +132,9 @@ const CSS = `
 
 let stylesInjected = false;
 
+// x (optional): clientX of the opening right-click; the popup drops
+// down from there, context-menu style, instead of centering on the
+// widget.
 export function openWidgetSettings({
   anchor,
   invoke,
@@ -139,6 +143,7 @@ export function openWidgetSettings({
   options,
   onChange,
   onOpenGlobal,
+  x,
 }) {
   if (!stylesInjected) {
     stylesInjected = true;
@@ -153,6 +158,7 @@ export function openWidgetSettings({
     anchor,
     invoke,
     className: "dwset",
+    place: x != null ? (el) => placeAtX(el, x) : undefined,
     // Keep the popup open while a control that needs sustained focus is
     // active (typing in a field, a select or color dialog open) even if
     // the pointer wanders off.

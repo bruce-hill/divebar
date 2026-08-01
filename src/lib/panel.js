@@ -5,11 +5,13 @@
 
 export function centerUnder(el, anchor) {
   const rect = anchor.getBoundingClientRect();
-  const width = el.offsetWidth;
-  const left = Math.min(
-    Math.max(8, rect.left + rect.width / 2 - width / 2),
-    window.innerWidth - width - 8,
-  );
+  placeAtX(el, rect.left + rect.width / 2 - el.offsetWidth / 2);
+}
+
+// Positions el's left edge at x (context-menu style), clamped to the
+// window edges.
+export function placeAtX(el, x) {
+  const left = Math.min(Math.max(8, x), window.innerWidth - el.offsetWidth - 8);
   el.style.left = `${left}px`;
 }
 

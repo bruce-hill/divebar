@@ -35,6 +35,8 @@ let stylesInjected = false;
 
 // holdOpen (optional): while it returns true, the pointer-leave timer
 // re-arms instead of closing (e.g. mid-drag on a slider).
+// place (optional): positions the panel, replacing the default
+// centered-under-the-anchor placement; re-run when the content resizes.
 export function createPopup({
   anchor,
   invoke,
@@ -42,6 +44,7 @@ export function createPopup({
   render,
   holdOpen,
   leaveDelay = 900,
+  place,
 }) {
   if (!stylesInjected) {
     stylesInjected = true;
@@ -83,7 +86,11 @@ export function createPopup({
     render(el, ...args);
     document.body.appendChild(el);
     animateIn(el);
-    centerUnder(el, anchor);
+    const position = (target) => {
+      if (place) place(target);
+      else if (anchor.isConnected) centerUnder(target, anchor);
+    };
+    position(el);
 
     document.addEventListener("pointerdown", onDocDown, true);
     el.addEventListener("pointerenter", disarm);
@@ -98,7 +105,7 @@ export function createPopup({
     // backend window shape in sync or the new extent renders clipped.
     const opened = el;
     sizeObserver = new ResizeObserver(() => {
-      if (anchor.isConnected) centerUnder(opened, anchor);
+      position(opened);
       sendShape(invoke, opened);
     });
     sizeObserver.observe(el);
