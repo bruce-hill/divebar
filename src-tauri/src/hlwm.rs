@@ -48,13 +48,13 @@ pub fn spawn_hlwm_watcher(app: AppHandle) {
 fn emit_state(app: &AppHandle, icons: &mut crate::xicon::IconFetcher) {
     let title = read_window_title();
     let class = run_herbstclient(&["attr", "clients.focus.class"]).unwrap_or_default();
-    let icon = run_herbstclient(&["attr", "clients.focus.winid"])
-        .as_deref()
-        .and_then(parse_winid)
+    let winid = run_herbstclient(&["attr", "clients.focus.winid"]).unwrap_or_default();
+    let icon = parse_winid(&winid)
         .and_then(|id| icons.icon_for(id, if class.is_empty() { "?" } else { &class }));
 
     let payload = json!({
         "tags": read_tags(),
+        "windowId": winid,
         "windowTitle": title,
         "windowClass": class,
         "windowIcon": icon,

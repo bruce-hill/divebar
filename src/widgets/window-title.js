@@ -117,12 +117,18 @@ export default {
     el.append(badgeEl, textEl);
 
     let lastClass = null;
+    let lastWindowId = null;
     let seenFirst = false;
 
     const unsubscribe = onEvent(
       "divebar://hlwm",
-      ({ windowTitle, windowClass, windowIcon, tags }) => {
+      ({ windowId, windowTitle, windowClass, windowIcon, tags }) => {
         const cls = windowClass ?? "";
+        // Animate only when focus moves to a different window — the same
+        // window renaming itself (page loads, terminal titles) should
+        // update the text quietly, or rapid renames flicker.
+        const windowChanged = windowId !== lastWindowId;
+        lastWindowId = windowId;
         let title = stripAppSuffix(windowTitle ?? "", cls).trim();
         const empty = !title && !cls;
         if (empty) {
@@ -135,7 +141,8 @@ export default {
 
         if (textEl.textContent !== title) {
           textEl.textContent = title;
-          if (seenFirst) {
+          if (seenFirst && windowChanged) {
+            for (const a of textEl.getAnimations()) a.cancel();
             textEl.animate(ENTER_ANIMATION, { duration: 140, easing: "ease-out" });
           }
         }
@@ -143,7 +150,8 @@ export default {
         if (cls && !empty) {
           nameEl.textContent = cls.toLowerCase();
           badgeEl.style.display = "flex";
-          if (cls !== lastClass && seenFirst) {
+          if (cls !== lastClass && seenFirst && windowChanged) {
+            for (const a of badgeEl.getAnimations()) a.cancel();
             badgeEl.animate(ENTER_ANIMATION, { duration: 140, easing: "ease-out" });
           }
         } else {
