@@ -3,6 +3,7 @@
 mod commands;
 mod config;
 mod hlwm;
+mod media;
 mod readers;
 mod stats;
 mod tray;
@@ -132,6 +133,7 @@ fn main() {
             hlwm::spawn_hlwm_watcher(app.handle().clone());
             tray::spawn_tray_host(app.handle().clone());
             weather::spawn_weather(app.handle().clone());
+            media::spawn_media(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -144,6 +146,8 @@ fn main() {
             commands::get_hlwm_state,
             commands::get_tray_state,
             commands::get_weather_state,
+            commands::get_media_state,
+            commands::media_control,
             commands::tray_activate,
             commands::tray_menu_click,
             commands::get_config,

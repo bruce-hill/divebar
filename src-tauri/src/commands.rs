@@ -147,6 +147,19 @@ pub async fn get_weather_state() -> Result<Value, String> {
     Ok(crate::weather::latest_state())
 }
 
+/// Latest media state for late subscribers.
+#[tauri::command]
+pub async fn get_media_state() -> Result<Value, String> {
+    Ok(crate::media::latest_state())
+}
+
+/// Sends a playback command ("playPause" | "next" | "previous") to the
+/// active MPRIS player.
+#[tauri::command]
+pub async fn media_control(action: String) -> Result<(), String> {
+    crate::media::control(&action).await
+}
+
 /// Latest tray state for late subscribers.
 #[tauri::command]
 pub async fn get_tray_state() -> Result<Value, String> {

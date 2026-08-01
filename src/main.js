@@ -149,6 +149,7 @@ invoke("get_config")
     dispatch("divebar://hlwm", await invoke("get_hlwm_state"), true);
     dispatch("divebar://tray", await invoke("get_tray_state"), true);
     dispatch("divebar://weather", await invoke("get_weather_state"), true);
+    dispatch("divebar://media", await invoke("get_media_state"), true);
   })
   .catch((err) => console.error("divebar: startup failed", err));
 

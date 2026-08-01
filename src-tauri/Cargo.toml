@@ -18,6 +18,8 @@ base64 = "0.22"
 system-tray = "0.8"
 freedesktop-icons = "0.4"
 tokio = "1"
+zbus = "5"
+futures-util = "0.3"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

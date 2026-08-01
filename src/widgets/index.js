@@ -13,6 +13,7 @@ export default [
   "time",
   "tray",
   "weather",
+  "media",
   "cpu",
   "memory",
   "logo",
