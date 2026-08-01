@@ -24,7 +24,17 @@ export default {
     const el = document.createElement("div");
     el.className = "chip widget-cpu";
     el.innerHTML = `
-      <span class="icon">\u{2699}\u{FE0F}</span>
+      <span class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round">
+          <rect x="6.5" y="6.5" width="11" height="11" rx="2"/>
+          <rect x="10" y="10" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>
+          <path d="M9 6.5 V3.5 M12 6.5 V3.5 M15 6.5 V3.5
+                   M9 17.5 V20.5 M12 17.5 V20.5 M15 17.5 V20.5
+                   M6.5 9 H3.5 M6.5 12 H3.5 M6.5 15 H3.5
+                   M17.5 9 H20.5 M17.5 12 H20.5 M17.5 15 H20.5"/>
+        </svg>
+      </span>
       <span class="value">--%</span>
       <div class="meter"><div class="meter-fill"></div></div>
     `;
