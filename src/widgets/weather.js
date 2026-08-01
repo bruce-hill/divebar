@@ -1,7 +1,9 @@
 // Weather widget: condition icon + temperature from wttr.in (fetched by
 // the backend; divebar://weather events). Location auto-detects by IP
 // unless set in settings. Details (conditions, feels-like, area) in the
-// tooltip.
+// tooltip; click opens a 3-day forecast pop-down.
+
+import { createPopup } from "../lib/popup.js";
 
 // wttr.in uses WWO condition codes; group them into icon categories.
 const CODE_ICONS = [
@@ -62,6 +64,52 @@ function iconFor(code) {
   return "cloud";
 }
 
+function iconSvg(code) {
+  return `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      ${ICONS[iconFor(code)]}
+    </svg>`;
+}
+
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// wttr.in strings (area, descriptions) get interpolated into popup markup.
+const esc = (s) =>
+  String(s).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+  );
+
+function dayLabel(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toDateString() === new Date().toDateString()
+    ? "Today"
+    : DAYS[date.getDay()];
+}
+
+function hourLabel(hour) {
+  if (hour === 0) return "12am";
+  if (hour < 12) return `${hour}am`;
+  if (hour === 12) return "12pm";
+  return `${hour - 12}pm`;
+}
+
+// The next 24 hours of 3-hour forecast slots, spilling into tomorrow.
+function upcomingSlots(forecast) {
+  const slots = [];
+  for (const day of forecast) {
+    const [y, m, d] = day.date.split("-").map(Number);
+    for (const h of day.hourly ?? []) {
+      slots.push({ ...h, at: new Date(y, m - 1, d, h.hour) });
+    }
+  }
+  // Keep a slot until it's half over (each covers 3 hours).
+  const cutoff = Date.now() - 90 * 60 * 1000;
+  return slots.filter((s) => s.at.getTime() >= cutoff).slice(0, 8);
+}
+
 export default {
   name: "weather",
   css: `
@@ -74,6 +122,46 @@ export default {
       height: calc(var(--icon-size) * 0.85);
     }
     .widget-weather .value { width: 4ch; text-align: center; } /* "104°" */
+
+    /* Forecast pop-down */
+    .wxcast {
+      padding: 12px 16px 14px;
+      font-size: calc(var(--bar-font) * 0.8);
+      color: var(--bar-fg);
+      user-select: none;
+    }
+    .wxcast-head { font-weight: 600; margin-bottom: 2px; }
+    .wxcast-now { color: var(--bar-fg-dim); margin-bottom: 10px; }
+    .wxcast-hours {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 12px;
+    }
+    .wxcast-hours .slot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      min-width: 3.2em;
+    }
+    .wxcast-hours .t { color: var(--bar-fg-dim); font-size: 0.85em; }
+    .wxcast-hours svg { width: 1.3em; height: 1.3em; display: block; }
+    .wxcast-hours .rain {
+      color: var(--accent);
+      font-size: 0.85em;
+      min-height: 1.2em;
+    }
+    .wxcast-days {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      gap: 6px 12px;
+      align-items: center;
+    }
+    .wxcast-days svg { width: 1.3em; height: 1.3em; display: block; }
+    .wxcast-desc { color: var(--bar-fg-dim); padding-right: 8px; }
+    .wxcast-desc .rain { color: var(--accent); }
+    .wxcast-temps { text-align: right; font-variant-numeric: tabular-nums; }
+    .wxcast-temps .lo { color: var(--bar-fg-dim); }
   `,
   settings: [
     {
@@ -90,9 +178,10 @@ export default {
       default: "",
     },
   ],
-  create({ options, onEvent }) {
+  create({ options, onEvent, invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-weather";
+    el.className = "chip clickable widget-weather";
+    el.style.cursor = "pointer";
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -104,8 +193,62 @@ export default {
     const svgEl = el.querySelector("svg");
     const valueEl = el.querySelector(".value");
     let currentIcon = null;
+    let latest = null;
+
+    const popup = createPopup({
+      anchor: el,
+      invoke,
+      className: "wxcast",
+      render(body) {
+        const useF = options.units === "fahrenheit";
+        const unit = useF ? "°F" : "°C";
+        const temp = useF ? (latest.tempF ?? latest.tempC) : latest.tempC;
+        const feels = useF ? (latest.feelsF ?? latest.feelsC) : latest.feelsC;
+        const rows = latest.forecast
+          .map((day) => {
+            const hi = useF ? (day.maxF ?? day.maxC) : day.maxC;
+            const lo = useF ? (day.minF ?? day.minC) : day.minC;
+            const rain =
+              day.rain > 0
+                ? ` <span class="rain">${Math.round(day.rain)}%</span>`
+                : "";
+            return `
+              <span>${dayLabel(day.date)}</span>
+              ${iconSvg(day.code)}
+              <span class="wxcast-desc">${esc(day.desc)}${rain}</span>
+              <span class="wxcast-temps">${Math.round(hi)}°
+                <span class="lo">${Math.round(lo)}°</span></span>`;
+          })
+          .join("");
+        const hours = upcomingSlots(latest.forecast)
+          .map((slot) => {
+            const t = useF ? (slot.tempF ?? slot.tempC) : slot.tempC;
+            const rain =
+              slot.rain > 0 ? `${Math.round(slot.rain)}%` : "";
+            return `
+              <span class="slot">
+                <span class="t">${hourLabel(slot.at.getHours())}</span>
+                ${iconSvg(slot.code)}
+                <span>${Math.round(t)}°</span>
+                <span class="rain">${rain}</span>
+              </span>`;
+          })
+          .join("");
+        body.innerHTML = `
+          <div class="wxcast-head">${esc(latest.area || "Weather")}</div>
+          <div class="wxcast-now">${esc(latest.desc)}, ${Math.round(temp)}${unit}${
+            feels != null ? ` (feels like ${Math.round(feels)}${unit})` : ""
+          }</div>
+          ${hours ? `<div class="wxcast-hours">${hours}</div>` : ""}
+          <div class="wxcast-days">${rows}</div>`;
+      },
+    });
+    el.addEventListener("click", () => {
+      if (latest?.forecast?.length) popup.toggle();
+    });
 
     const unsubscribe = onEvent("divebar://weather", (weather) => {
+      latest = weather;
       const present = weather && weather.tempC != null;
       el.classList.toggle("present", Boolean(present));
       if (!present) return;
@@ -128,6 +271,12 @@ export default {
         (weather.area ? ` — ${weather.area}` : "");
     });
 
-    return { el, destroy: unsubscribe };
+    return {
+      el,
+      destroy() {
+        unsubscribe();
+        popup.close();
+      },
+    };
   },
 };
