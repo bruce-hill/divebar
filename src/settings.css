@@ -269,6 +269,16 @@ select option {
 
 input[type="number"] { width: 96px; }
 
+input[type="color"] {
+  width: 64px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
 .font-select { max-width: 280px; }
 
 input[type="checkbox"] {

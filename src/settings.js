@@ -129,6 +129,14 @@ function settingInput(schema, entry) {
       scheduleSave();
     });
     if (current) input.style.fontFamily = `"${current}"`;
+  } else if (schema.type === "color") {
+    input = el("input");
+    input.type = "color";
+    input.value = current || schema.default;
+    input.addEventListener("change", () => {
+      (entry.options ??= {})[schema.key] = input.value;
+      scheduleSave();
+    });
   } else if (schema.type === "number") {
     input = el("input");
     input.type = "number";
@@ -258,9 +266,11 @@ function setupRowsDnD(rowsEl) {
 // --- Bar settings ----------------------------------------------------------
 
 const BAR_SETTINGS = [
-  { key: "height", label: "Bar height (px)", min: 24, max: 128, default: 48 },
-  { key: "paddingX", label: "Horizontal padding (px)", min: 0, max: 48, default: 10 },
-  { key: "paddingY", label: "Vertical padding (px)", min: 0, max: 24, default: 6 },
+  { key: "height", label: "Bar height (px)", type: "number", min: 24, max: 128, default: 48 },
+  { key: "paddingX", label: "Horizontal padding (px)", type: "number", min: 0, max: 48, default: 10 },
+  { key: "paddingY", label: "Vertical padding (px)", type: "number", min: 0, max: 24, default: 6 },
+  { key: "accent", label: "Accent color", type: "color", default: "#7aa2f7" },
+  { key: "font", label: "Font", type: "font", default: "" },
 ];
 
 function barSection() {
@@ -269,23 +279,11 @@ function barSection() {
   const body = el("div", "row");
   const inner = el("div", "row-settings");
   inner.style.borderTop = "none";
+  const entry = { options: (state.bar ??= {}) };
   for (const schema of BAR_SETTINGS) {
     const row = el("div", "setting-row");
     row.append(el("label", "", schema.label));
-    const input = el("input");
-    input.type = "number";
-    input.min = schema.min;
-    input.max = schema.max;
-    input.value = (state.bar ??= {})[schema.key] ?? schema.default;
-    input.addEventListener("change", () => {
-      let v = Number(input.value);
-      if (Number.isNaN(v)) v = schema.default;
-      v = Math.min(schema.max, Math.max(schema.min, v));
-      input.value = v;
-      (state.bar ??= {})[schema.key] = v;
-      scheduleSave();
-    });
-    row.append(input);
+    row.append(settingInput(schema, entry));
     inner.append(row);
   }
   body.append(inner);

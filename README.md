@@ -38,7 +38,12 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 Also available but not in the default config: **logo**, **cpu**, **memory**,
 **spacer** (invisible, configurable flex-grow — for pushing widget groups
 apart), **weather** (wttr.in, no API key; icon + temp, details in tooltip,
-IP-based location unless configured).
+IP-based location unless configured), **media** (MPRIS: album art +
+track, click play/pause, middle-click next).
+
+The date widget's click opens a month calendar; tooltips are custom
+styled panels; the Bar section of settings includes height, padding,
+accent color, and font.
 
 ## Configuration
 
@@ -145,10 +150,7 @@ it and shrinks the region back). Only the bar strip is reserved via strut.
 
 ## Roadmap / non-goals of the prototype
 
-- **More settings** — bar height, theme colors, and fonts are still
-  hardcoded constants (`main.rs`, `style.css` `:root` variables); fold them
-  into the config file + settings window.
 - **Wayland** — space reservation currently uses X11 struts; Wayland support
   would go through `gtk-layer-shell` in `linux.rs`.
-- **More widgets** — media player, notifications.
+- **More widgets** — notifications.
 - **Multi-monitor** — one bar per monitor.

@@ -96,6 +96,13 @@ function applyBarStyle(config) {
   root.setProperty("--chip-radius", `${chip / 2}px`);
   root.setProperty("--bar-font", `${Math.round(chip * 0.55)}px`);
   root.setProperty("--icon-size", `${Math.round(chip * 0.88)}px`);
+  if (bar.accent) root.setProperty("--accent", bar.accent);
+  else root.removeProperty("--accent");
+  if (bar.font) {
+    root.setProperty("--font", `"${bar.font}", Inter, Cantarell, system-ui, sans-serif`);
+  } else {
+    root.removeProperty("--font");
+  }
 }
 
 let mounted = []; // [{ key, instance }] in bar order
