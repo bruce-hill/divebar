@@ -76,6 +76,9 @@ body {
 }
 
 .chip .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--bar-font);
   line-height: 1;
 }

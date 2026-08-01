@@ -67,6 +67,12 @@ export default {
   css: `
     .widget-weather { display: none; }
     .widget-weather.present { display: flex; }
+    /* The composed cloud icons fill their box more fully than the other
+       widget icons — draw them slightly smaller so heights match. */
+    .widget-weather .icon svg {
+      width: calc(var(--icon-size) * 0.85);
+      height: calc(var(--icon-size) * 0.85);
+    }
     .widget-weather .value { width: 4ch; text-align: center; } /* "104°" */
   `,
   settings: [
