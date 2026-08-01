@@ -50,7 +50,7 @@ export default {
   ],
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-volume";
+    el.className = "chip clickable widget-volume";
     el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">${SPEAKER_SVG}</span>

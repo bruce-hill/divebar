@@ -22,7 +22,7 @@ export default {
   ],
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-brightness";
+    el.className = "chip clickable widget-brightness";
     el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">

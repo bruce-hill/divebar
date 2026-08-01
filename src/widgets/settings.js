@@ -9,7 +9,7 @@ export default {
   `,
   create({ invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-settings";
+    el.className = "chip clickable widget-settings";
     el.title = "divebar settings";
     el.innerHTML = `
       <span class="icon">

@@ -40,7 +40,6 @@ export default {
       padding: 0 calc(var(--chip-height) * 0.3) 0 calc(var(--chip-height) * 0.18);
       border-radius: var(--chip-radius);
       white-space: nowrap;
-      background: var(--chip-bg);
       color: var(--bar-fg-dim);
     }
     .widget-window-title .app-badge .app-icon {

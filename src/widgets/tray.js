@@ -16,7 +16,6 @@ export default {
       height: var(--chip-height);
       padding: 0 calc(var(--chip-height) * 0.2);
       border-radius: var(--chip-radius);
-      background: var(--chip-bg);
     }
     .widget-tray.has-items { display: flex; }
     .widget-tray .tray-item {

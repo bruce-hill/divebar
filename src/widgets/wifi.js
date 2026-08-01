@@ -18,7 +18,7 @@ export default {
   ],
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-wifi";
+    el.className = "chip clickable widget-wifi";
     el.classList.toggle("compact", !options.showSsid);
     el.innerHTML = `
       <span class="icon">

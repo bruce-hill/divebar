@@ -66,12 +66,12 @@ body {
   height: var(--chip-height);
   padding: 0 calc(var(--chip-height) * 0.22);
   border-radius: var(--chip-radius);
-  background: var(--chip-bg);
   white-space: nowrap;
   transition: background 120ms ease;
 }
 
-.chip:hover {
+/* Only interactive chips (marked .clickable) show a hover background. */
+.chip.clickable:hover {
   background: var(--chip-bg-hover);
 }
 
