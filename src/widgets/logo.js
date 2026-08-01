@@ -17,9 +17,11 @@ export default {
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4 H20 L12 13 Z"/>
-          <path d="M12 13 V20 M8 20 H16"/>
-          <circle cx="14.8" cy="7" r="1.7" fill="currentColor" stroke="none"/>
+          <path d="M5.5 8.5 V18.5 a1.8 1.8 0 0 0 1.8 1.8 h5.9 a1.8 1.8 0 0 0 1.8-1.8 V8.5"/>
+          <path d="M15 11 h1.6 a2.4 2.4 0 0 1 2.4 2.4 v0.4 a2.4 2.4 0 0 1 -2.4 2.4 H15"/>
+          <circle cx="7.4" cy="7.6" r="1.9" fill="currentColor" stroke="none"/>
+          <circle cx="10.5" cy="6.8" r="2.1" fill="currentColor" stroke="none"/>
+          <circle cx="13.6" cy="7.6" r="1.9" fill="currentColor" stroke="none"/>
         </svg>
       </span>
       <span>divebar</span>`;
