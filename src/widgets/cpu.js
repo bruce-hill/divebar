@@ -3,6 +3,7 @@
 export default {
   name: "cpu",
   css: `
+    .widget-cpu .value { width: 4ch; text-align: left; } /* "100%" */
     .widget-cpu .meter {
       width: 36px;
       height: 4px;

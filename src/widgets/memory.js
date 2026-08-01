@@ -5,6 +5,8 @@ const GIB = 1024 ** 3;
 export default {
   name: "memory",
   css: `
+    .widget-memory .value { width: 4ch; text-align: left; } /* "31.8" */
+    .widget-memory .total { width: auto; }
     .widget-memory .total {
       color: var(--bar-fg-dim);
     }
