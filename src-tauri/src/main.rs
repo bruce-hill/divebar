@@ -4,6 +4,7 @@ mod commands;
 mod config;
 mod events;
 mod hlwm;
+mod icons;
 mod media;
 mod readers;
 mod stats;

@@ -8,16 +8,16 @@
 //! and charger changes show up immediately instead of on the next tick.
 
 use crate::events::Trigger;
+use crate::readers::CpuTimes;
 use serde_json::json;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
-use sysinfo::System;
 use tauri::AppHandle;
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
-/// Don't recompute CPU usage more often than this — sysinfo needs a gap
-/// between refreshes to produce meaningful numbers.
+/// Don't recompute CPU usage more often than this — the /proc/stat delta
+/// needs a gap between samples to produce meaningful numbers.
 const CPU_MIN_INTERVAL: Duration = Duration::from_millis(900);
 /// Post-trigger settle time, so a burst of change events (e.g. holding a
 /// volume key) coalesces into one refresh.
@@ -35,25 +35,27 @@ pub fn spawn_stats_emitter(app: AppHandle) {
     spawn_change_watchers();
 
     std::thread::spawn(move || {
-        let mut sys = System::new();
+        let mut prev_cpu: Option<CpuTimes> = None;
         let mut last_cpu = 0.0f32;
         let mut last_cpu_at: Option<Instant> = None;
         loop {
             if last_cpu_at.is_none_or(|t| t.elapsed() >= CPU_MIN_INTERVAL) {
-                sys.refresh_cpu_usage();
-                last_cpu = sys.global_cpu_usage();
+                if let Some(curr) = crate::readers::read_cpu_times() {
+                    if let Some(pct) =
+                        prev_cpu.and_then(|prev| crate::readers::cpu_usage_percent(prev, curr))
+                    {
+                        last_cpu = pct;
+                    }
+                    prev_cpu = Some(curr);
+                }
                 last_cpu_at = Some(Instant::now());
             }
-            sys.refresh_memory();
 
             let payload = json!({
                 "cpu": {
                     "usagePercent": last_cpu,
                 },
-                "memory": {
-                    "usedBytes": sys.used_memory(),
-                    "totalBytes": sys.total_memory(),
-                },
+                "memory": crate::readers::read_memory(),
                 "battery": crate::readers::read_battery(),
                 "volume": crate::readers::read_volume(),
                 "brightness": crate::readers::read_brightness(),

@@ -155,10 +155,7 @@ fn icon_data_uri(item: &StatusNotifierItem) -> Option<String> {
         }
     }
 
-    let path = freedesktop_icons::lookup(name)
-        .with_size(48)
-        .with_cache()
-        .find()?;
+    let path = crate::icons::lookup(name, 48)?;
     file_data_uri(&path)
 }
 
