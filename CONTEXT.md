@@ -55,12 +55,26 @@ invent synonyms.
   `weather`, `media`, `stats`), emitted as `divebar://<name>` events via
   `src-tauri/src/events.rs`. Emitting through `events::emit` also caches
   the payload, so late subscribers replay every channel's latest state
-  through the single `get_latest_states` command. `events::Trigger` is
-  the coalescing wake-up line worker loops use for "refresh now".
+  through the single `get_latest_states` command. A channel appears in
+  the replay only after its first emit — e.g. weather emits only on a
+  successful fetch, so the frontend must tolerate its absence.
+  `events::Trigger` is the coalescing wake-up line worker loops use for
+  "refresh now".
+- **Worker loop** — a backend thread emitting on a Channel, spawned via
+  `events::spawn_poll_loop`: its work closure returns `Some(payload)` to
+  emit or `None` to skip a round; the loop owns Trigger waiting, notify
+  coalescing, and both shutdown paths (emit failure, all notifiers
+  gone). The stats and weather loops are its two adapters.
 - **Reader** — a function in `src-tauri/src/readers.rs` that reads a
   system source (process output, URL fetch, sysfs/procfs file) and
   returns JSON for the frontend. Readers are a thin impure fetch over a
   pure `parse_*` function; the parse functions are internal seams,
-  unit-tested in-module with string fixtures. `readers::run` and
-  `readers::fetch_url` are the only ways divebar spawns one-shot
-  processes.
+  unit-tested in-module with string fixtures. `readers::run` (one-shot),
+  `readers::fetch_url` (URL fetch), and `readers::spawn_line_watcher`
+  (streaming) are the only ways divebar spawns processes — with one
+  stray exception, the fire-and-forget wifi-gui launch in `commands.rs`.
+- **Line watcher** — `readers::spawn_line_watcher`, the streaming Reader
+  primitive: runs a command, feeds each stdout line (plus a `Start`
+  event before every (re)spawn) to a callback, and restarts the command
+  with backoff when it dies. Watches `herbstclient --idle`, `pactl
+  subscribe`, and `udevadm monitor`.

@@ -5,7 +5,8 @@
 //! hand-rolling a LATEST mutex and a replay command.
 //!
 //! Also provides `Trigger`, the coalescing wake-up line worker loops use
-//! for "refresh now" requests.
+//! for "refresh now" requests, and `spawn_poll_loop`, the worker-loop
+//! harness itself: subscribe, wait, emit, and shut down in one place.
 
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -86,6 +87,48 @@ impl TriggerReceiver {
     }
 }
 
+/// Spawns a worker thread that emits on `channel` until shutdown. Each
+/// round, `work` returns `Some(payload)` to emit or `None` to skip (e.g.
+/// a failed fetch); the loop then waits on `trigger` for up to `interval`,
+/// coalescing notify bursts over `settle`. Both exit paths are owned
+/// here: emit reporting app shutdown, and every notifier being gone.
+pub fn spawn_poll_loop(
+    app: AppHandle,
+    channel: &'static str,
+    trigger: &Trigger,
+    interval: Duration,
+    settle: Duration,
+    work: impl FnMut() -> Option<Value> + Send + 'static,
+) {
+    let rx = trigger.subscribe();
+    std::thread::spawn(move || {
+        run_poll_loop(rx, interval, settle, work, |payload| {
+            emit(&app, channel, payload)
+        });
+    });
+}
+
+/// The loop behind `spawn_poll_loop`, generic over the emit so tests can
+/// drive it without an `AppHandle`.
+fn run_poll_loop(
+    rx: TriggerReceiver,
+    interval: Duration,
+    settle: Duration,
+    mut work: impl FnMut() -> Option<Value>,
+    mut emit: impl FnMut(Value) -> bool,
+) {
+    loop {
+        if let Some(payload) = work() {
+            if !emit(payload) {
+                break; // app is shutting down
+            }
+        }
+        if !rx.wait(interval, settle) {
+            break; // every notifier is gone
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +182,66 @@ mod tests {
         trigger.notify(); // must not panic or wedge
         let rx = trigger.subscribe();
         assert!(rx.wait(Duration::from_millis(1), Duration::ZERO));
+    }
+
+    #[test]
+    fn poll_loop_emits_each_round_until_emit_reports_shutdown() {
+        let trigger = Trigger::new();
+        let rx = trigger.subscribe();
+        let mut rounds = 0;
+        let mut emitted = Vec::new();
+        run_poll_loop(
+            rx,
+            Duration::from_millis(1),
+            Duration::ZERO,
+            || {
+                rounds += 1;
+                Some(json!(rounds))
+            },
+            |payload| {
+                emitted.push(payload);
+                emitted.len() < 3 // "shutdown" on the third emit
+            },
+        );
+        assert_eq!(rounds, 3);
+        assert_eq!(emitted, vec![json!(1), json!(2), json!(3)]);
+    }
+
+    #[test]
+    fn poll_loop_skips_emit_when_work_returns_none() {
+        let trigger = Trigger::new();
+        let rx = trigger.subscribe();
+        drop(trigger); // no notifiers → exactly one round
+        let mut emits = 0;
+        run_poll_loop(
+            rx,
+            Duration::from_millis(1),
+            Duration::ZERO,
+            || None,
+            |_| {
+                emits += 1;
+                true
+            },
+        );
+        assert_eq!(emits, 0);
+    }
+
+    #[test]
+    fn poll_loop_exits_when_every_notifier_is_gone() {
+        let trigger = Trigger::new();
+        let rx = trigger.subscribe();
+        drop(trigger);
+        let mut rounds = 0;
+        run_poll_loop(
+            rx,
+            Duration::from_secs(60), // would hang here if the drop were missed
+            Duration::ZERO,
+            || {
+                rounds += 1;
+                Some(json!(null))
+            },
+            |_| true,
+        );
+        assert_eq!(rounds, 1); // one round of work, then the disconnect exit
     }
 }

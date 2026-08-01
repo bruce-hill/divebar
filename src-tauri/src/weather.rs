@@ -39,13 +39,16 @@ fn configured_location() -> String {
 }
 
 pub fn spawn_weather(app: AppHandle) {
-    let rx = REFRESH.subscribe();
-
-    std::thread::spawn(move || {
-        let mut last_location: Option<String> = None;
-        let mut last_fetch: Option<Instant> = None;
-        let mut last_ok = false;
-        loop {
+    let mut last_location: Option<String> = None;
+    let mut last_fetch: Option<Instant> = None;
+    let mut last_ok = false;
+    crate::events::spawn_poll_loop(
+        app,
+        "weather",
+        &REFRESH,
+        RETRY_INTERVAL,
+        Duration::ZERO,
+        move || {
             let location = configured_location();
             let due = match last_fetch {
                 None => true,
@@ -53,20 +56,18 @@ pub fn spawn_weather(app: AppHandle) {
                     t.elapsed() >= if last_ok { FETCH_INTERVAL } else { RETRY_INTERVAL }
                 }
             };
-            if due || last_location.as_deref() != Some(&location) {
-                let payload = fetch(&location);
-                last_ok = !payload.is_null();
-                last_fetch = Some(Instant::now());
-                last_location = Some(location);
-                if last_ok {
-                    crate::events::emit(&app, "weather", payload);
-                }
+            if !due && last_location.as_deref() == Some(&location) {
+                return None;
             }
-            if !rx.wait(RETRY_INTERVAL, Duration::ZERO) {
-                break;
-            }
-        }
-    });
+            let payload = fetch(&location);
+            last_ok = !payload.is_null();
+            last_fetch = Some(Instant::now());
+            last_location = Some(location);
+            // Failed fetches emit nothing: stale weather beats no weather,
+            // and the frontend tolerates the channel's absence.
+            last_ok.then_some(payload)
+        },
+    );
 }
 
 /// Bare 5-digit entries are US zip codes; unqualified they geocode

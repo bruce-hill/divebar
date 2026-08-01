@@ -3,46 +3,25 @@
 //! as `divebar://hlwm` events.
 
 use serde_json::{json, Value};
-use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::ops::ControlFlow;
 use std::time::Duration;
 use tauri::AppHandle;
 
 pub fn spawn_hlwm_watcher(app: AppHandle) {
-    std::thread::spawn(move || {
-        let mut icons = crate::xicon::IconFetcher::new();
-        loop {
+    let mut icons = crate::xicon::IconFetcher::new();
+    // Every line herbstclient --idle prints is a WM event; we just
+    // re-query the full state (cheap) rather than parsing individual
+    // event types. Start events re-sync after gaps (hlwm not running
+    // yet, or restarted).
+    crate::readers::spawn_line_watcher(
+        "herbstclient",
+        &["--idle"],
+        Duration::from_secs(5),
+        move |_event| {
             emit_state(&app, &mut icons);
-
-            // Block on herbstclient --idle; every line it prints is a WM
-            // event, and we just re-query the full state (cheap) rather
-            // than parsing individual event types.
-            match Command::new("herbstclient")
-                .arg("--idle")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .spawn()
-            {
-                Ok(mut child) => {
-                    if let Some(stdout) = child.stdout.take() {
-                        for line in BufReader::new(stdout).lines() {
-                            if line.is_err() {
-                                break;
-                            }
-                            emit_state(&app, &mut icons);
-                        }
-                    }
-                    let _ = child.wait();
-                }
-                Err(err) => {
-                    eprintln!("divebar: failed to run herbstclient --idle: {err}");
-                }
-            }
-
-            // herbstclient exited (hlwm not running?) — retry with backoff.
-            std::thread::sleep(Duration::from_secs(5));
-        }
-    });
+            ControlFlow::Continue(())
+        },
+    );
 }
 
 fn emit_state(app: &AppHandle, icons: &mut crate::xicon::IconFetcher) {

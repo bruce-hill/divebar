@@ -1,15 +1,20 @@
 //! Readers for system state: the one home for "read a system source" —
-//! process output (`run`), URL fetches (`fetch_url`), and sysfs/procfs
-//! files. Each reader is a thin impure fetch over a pure `parse_*`
-//! function, so the parsing is unit-testable with string fixtures.
+//! process output (`run`), URL fetches (`fetch_url`), streaming process
+//! output (`spawn_line_watcher`), and sysfs/procfs files. Each reader is
+//! a thin impure fetch over a pure `parse_*` function, so the parsing is
+//! unit-testable with string fixtures.
 //!
 //! The volume/brightness/wifi readers are both polled by the stats loop
 //! and returned fresh from control commands (so widgets update instantly
 //! after an adjustment instead of waiting for the next poll).
 
 use serde_json::{json, Value};
+use std::io::{BufRead, BufReader};
+use std::ops::ControlFlow;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::thread::JoinHandle;
+use std::time::Duration;
 
 pub fn run(cmd: &str, args: &[&str]) -> Option<String> {
     let output = Command::new(cmd).args(args).output().ok()?;
@@ -29,6 +34,58 @@ pub fn fetch_url(url: &str, max_time_secs: u32) -> Option<Vec<u8>> {
         return None;
     }
     Some(output.stdout)
+}
+
+/// A `spawn_line_watcher` callback event.
+pub enum LineEvent<'a> {
+    /// About to (re)start the watched command — fired before every spawn
+    /// attempt, including retries, so state derived from the stream can
+    /// be re-synced after a gap.
+    Start,
+    Line(&'a str),
+}
+
+/// Spawns a thread that runs `cmd` and feeds each stdout line to
+/// `on_event`, restarting the command after `backoff` whenever it dies —
+/// the streaming sibling of `run`, for processes that outlive one output.
+/// `on_event` returns `ControlFlow::Break` to end the watcher and its
+/// thread (production watchers run for the app's life; tests join).
+pub fn spawn_line_watcher(
+    cmd: &'static str,
+    args: &'static [&'static str],
+    backoff: Duration,
+    mut on_event: impl FnMut(LineEvent) -> ControlFlow<()> + Send + 'static,
+) -> JoinHandle<()> {
+    std::thread::spawn(move || loop {
+        if on_event(LineEvent::Start).is_break() {
+            return;
+        }
+        match Command::new(cmd)
+            .args(args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(mut child) => {
+                if let Some(stdout) = child.stdout.take() {
+                    for line in BufReader::new(stdout).lines() {
+                        let Ok(line) = line else { break };
+                        if on_event(LineEvent::Line(&line)).is_break() {
+                            let _ = child.kill();
+                            let _ = child.wait();
+                            return;
+                        }
+                    }
+                }
+                let _ = child.wait();
+            }
+            Err(err) => {
+                eprintln!("divebar: line watcher {cmd} failed: {err}");
+            }
+        }
+        // The command died (daemon restart?) — retry with backoff.
+        std::thread::sleep(backoff);
+    })
 }
 
 pub fn read_volume() -> Value {
@@ -378,5 +435,62 @@ mod tests {
             time_remaining_minutes(5000.0, 10000.0, 1.0, "Discharging"),
             Value::Null
         );
+    }
+
+    fn watcher_events(
+        cmd: &'static str,
+        args: &'static [&'static str],
+        backoff: Duration,
+        stop_after: impl Fn(&[String]) -> bool + Send + 'static,
+    ) -> Vec<String> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let mut seen = Vec::new();
+        let handle = spawn_line_watcher(cmd, args, backoff, move |event| {
+            seen.push(match event {
+                LineEvent::Start => "<start>".to_string(),
+                LineEvent::Line(line) => line.to_string(),
+            });
+            tx.send(seen.last().unwrap().clone()).unwrap();
+            if stop_after(&seen) {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        });
+        handle.join().unwrap();
+        rx.try_iter().collect()
+    }
+
+    #[test]
+    fn line_watcher_signals_start_then_streams_lines() {
+        let events = watcher_events(
+            "sh",
+            &["-c", "echo alpha; echo beta"],
+            Duration::from_secs(60),
+            |seen| seen.last().is_some_and(|e| e == "beta"),
+        );
+        assert_eq!(events, ["<start>", "alpha", "beta"]);
+    }
+
+    #[test]
+    fn line_watcher_restarts_with_a_fresh_start_event_after_the_command_exits() {
+        let events = watcher_events(
+            "sh",
+            &["-c", "echo tick"],
+            Duration::from_millis(5),
+            |seen| seen.iter().filter(|e| *e == "tick").count() == 2,
+        );
+        assert_eq!(events, ["<start>", "tick", "<start>", "tick"]);
+    }
+
+    #[test]
+    fn line_watcher_keeps_retrying_when_the_command_cannot_spawn() {
+        let events = watcher_events(
+            "divebar-test-no-such-command",
+            &[],
+            Duration::from_millis(5),
+            |seen| seen.len() == 3,
+        );
+        assert_eq!(events, ["<start>", "<start>", "<start>"]);
     }
 }
