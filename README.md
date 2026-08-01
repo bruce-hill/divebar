@@ -61,6 +61,10 @@ cd src-tauri
 cargo run            # or: cargo tauri dev
 ```
 
+Or via make: `make build` (release), `make install` (to
+`$(PREFIX)/bin`, default `/usr/local` — `sudo make install`),
+`make uninstall`, `make run`, `make clean`.
+
 No Node/npm needed — the frontend is plain ES modules served from `src/` and
 embedded at compile time (`withGlobalTauri` provides the Tauri API). Note that
 frontend changes therefore require a rebuild, even under `cargo tauri dev`.
