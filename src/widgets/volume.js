@@ -39,14 +39,30 @@ export default {
   name: "volume",
   css: `
     .widget-volume { cursor: pointer; }
-    .widget-volume .value { width: 4ch; text-align: left; } /* "100%" */
-    .widget-volume.compact .value { display: none; }
+    .widget-volume .value {
+      width: 4ch; /* "100%" */
+      text-align: left;
+      overflow: hidden;
+      transition: width 200ms ease, opacity 200ms ease, margin-left 200ms ease;
+    }
+    /* Collapsed: zero width plus a negative margin to cancel the chip gap */
+    .widget-volume.compact .value {
+      width: 0;
+      opacity: 0;
+      margin-left: -5px;
+    }
     .widget-volume.muted .value,
     .widget-volume.muted .icon { color: var(--bar-fg-dim); }
     .widget-volume.muted .value { text-decoration: line-through; }
   `,
   settings: [
     { key: "showPercent", label: "Show percent", type: "boolean", default: false },
+    {
+      key: "peekOnChange",
+      label: "Show percent briefly on change",
+      type: "boolean",
+      default: true,
+    },
   ],
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
@@ -59,10 +75,29 @@ export default {
     const iconEl = el.querySelector(".icon");
     const valueEl = el.querySelector(".value");
     let leadBtn = null;
+    let peekTimer = null;
+    let lastPercent = null;
+    let lastMuted = null;
+
+    // Temporarily reveal the percentage after a change, then re-collapse.
+    function peek() {
+      el.classList.remove("compact");
+      if (peekTimer) clearTimeout(peekTimer);
+      peekTimer = setTimeout(() => {
+        el.classList.add("compact");
+        peekTimer = null;
+      }, 2500);
+    }
 
     function render(volume) {
       el.style.display = volume ? "" : "none";
       if (!volume) return;
+      const changed =
+        lastPercent !== null &&
+        (volume.percent !== lastPercent || volume.muted !== lastMuted);
+      lastPercent = volume.percent;
+      lastMuted = volume.muted;
+      if (changed && !options.showPercent && options.peekOnChange) peek();
       valueEl.textContent = `${volume.percent}%`;
       el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);
@@ -112,6 +147,7 @@ export default {
     return {
       el,
       destroy() {
+        if (peekTimer) clearTimeout(peekTimer);
         popup.close();
         unsubscribe();
       },

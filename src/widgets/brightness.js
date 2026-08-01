@@ -14,11 +14,27 @@ export default {
   name: "brightness",
   css: `
     .widget-brightness { cursor: pointer; }
-    .widget-brightness .value { width: 4ch; text-align: left; } /* "100%" */
-    .widget-brightness.compact .value { display: none; }
+    .widget-brightness .value {
+      width: 4ch; /* "100%" */
+      text-align: left;
+      overflow: hidden;
+      transition: width 200ms ease, opacity 200ms ease, margin-left 200ms ease;
+    }
+    /* Collapsed: zero width plus a negative margin to cancel the chip gap */
+    .widget-brightness.compact .value {
+      width: 0;
+      opacity: 0;
+      margin-left: -5px;
+    }
   `,
   settings: [
     { key: "showPercent", label: "Show percent", type: "boolean", default: false },
+    {
+      key: "peekOnChange",
+      label: "Show percent briefly on change",
+      type: "boolean",
+      default: true,
+    },
   ],
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
@@ -37,6 +53,18 @@ export default {
     const coreEl = el.querySelector(".core");
     const raysEl = el.querySelector(".rays");
     const valueEl = el.querySelector(".value");
+    let peekTimer = null;
+    let lastPercent = null;
+
+    // Temporarily reveal the percentage after a change, then re-collapse.
+    function peek() {
+      el.classList.remove("compact");
+      if (peekTimer) clearTimeout(peekTimer);
+      peekTimer = setTimeout(() => {
+        el.classList.add("compact");
+        peekTimer = null;
+      }, 2500);
+    }
 
     const rays = Array.from({ length: RAY_COUNT }, (_, i) => {
       const angle = (i / RAY_COUNT) * 2 * Math.PI;
@@ -50,6 +78,10 @@ export default {
     function render(brightness) {
       el.style.display = brightness ? "" : "none";
       if (!brightness) return;
+      const changed =
+        lastPercent !== null && brightness.percent !== lastPercent;
+      lastPercent = brightness.percent;
+      if (changed && !options.showPercent && options.peekOnChange) peek();
       const t = brightness.percent / 100;
       valueEl.textContent = `${brightness.percent}%`;
       el.title = `Brightness: ${brightness.percent}%`;
@@ -81,6 +113,7 @@ export default {
     return {
       el,
       destroy() {
+        if (peekTimer) clearTimeout(peekTimer);
         popup.close();
         unsubscribe();
       },
