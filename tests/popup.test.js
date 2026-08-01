@@ -226,6 +226,7 @@ describe("popup library callers", () => {
     await import("../src/lib/slider-popup.js");
     await import("../src/lib/menu-popup.js");
     await import("../src/lib/calendar-popup.js");
+    await import("../src/lib/widget-settings-popup.js");
     await import("../src/lib/tooltip.js");
   });
 });

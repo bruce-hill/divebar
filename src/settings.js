@@ -5,7 +5,7 @@
 // the real bar immediately.
 
 import { BAR_SETTINGS } from "./lib/bar-config.js";
-import { createSettingInput } from "./lib/setting-inputs.js";
+import { renderSettingsRows } from "./lib/settings-form.js";
 
 let state = { widgets: [] };
 let invoke = null;
@@ -55,20 +55,15 @@ function barSection() {
   section.append(el("h2", "", "Bar"));
   const panel = el("div", "panel");
   const options = (state.bar ??= {});
-  for (const schema of BAR_SETTINGS) {
-    const row = el("div", "setting-row");
-    row.append(el("label", "", schema.label));
-    row.append(
-      createSettingInput(schema, options[schema.key] ?? schema.default, {
-        invoke,
-        onChange(value) {
-          options[schema.key] = value;
-          scheduleSave();
-        },
-      }),
-    );
-    panel.append(row);
-  }
+  renderSettingsRows(panel, {
+    schemas: BAR_SETTINGS,
+    options,
+    invoke,
+    onChange(key, value) {
+      options[key] = value;
+      scheduleSave();
+    },
+  });
   section.append(panel);
   return section;
 }

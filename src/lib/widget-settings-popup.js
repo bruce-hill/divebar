@@ -1,14 +1,13 @@
 // Right-click settings for a bar widget: its schema-driven settings
 // rendered inline in a pop-down, then a separator and links to the bar
 // layout editor and the full divebar settings window. Popup mechanics
-// live in popup.js and the inputs in setting-inputs.js; persistence
-// stays with the caller via onChange(key, value).
+// live in popup.js and the form rows (with their control CSS) in
+// settings-form.js; persistence stays with the caller via
+// onChange(key, value).
 
 import { createPopup } from "./popup.js";
 import { placeAtX } from "./panel.js";
-import { createSettingInput } from "./setting-inputs.js";
-
-const SELECT_ARROW = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6" viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="%239aa3b2" stroke-width="1.5" stroke-linecap="round"/></svg>')`;
+import { renderSettingsRows, hasFocusedControl } from "./settings-form.js";
 
 const CSS = `
   .dwset {
@@ -31,15 +30,8 @@ const CSS = `
     overflow-y: auto;
     min-height: 0;
   }
+  .dwset-rows .dform-row { padding: 0 4px; }
   .dwset-sep, .dwset-global { flex: none; }
-  .dwset-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 0 4px;
-  }
-  .dwset-row > label { color: var(--bar-fg-dim); white-space: nowrap; }
   .dwset-none { color: var(--bar-fg-dim); padding: 0 4px; }
   .dwset-sep { height: 1px; background: rgba(255, 255, 255, 0.09); margin: 10px 0 4px; }
   .dwset-global {
@@ -55,79 +47,6 @@ const CSS = `
     cursor: pointer;
   }
   .dwset-global:hover { background: var(--chip-bg-hover); }
-
-  /* Form controls (the bar window has no global form styling). Selects
-     are taken out of native rendering — WebKitGTK's native controls
-     render unreliably on dark pages. */
-  .dwset input[type="text"],
-  .dwset input[type="number"],
-  .dwset select {
-    font: inherit;
-    color: var(--bar-fg);
-    background-color: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 7px;
-    padding: 3px 8px;
-  }
-  .dwset input[type="number"] { width: 72px; }
-  .dwset select {
-    -webkit-appearance: none;
-    appearance: none;
-    padding-right: 24px;
-    background-image: ${SELECT_ARROW};
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-  }
-  .dwset select option { background: var(--bar-bg); color: var(--bar-fg); }
-  /* Custom-drawn checkbox — the native one is nearly invisible on a
-     dark background. */
-  .dwset input[type="checkbox"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 17px;
-    height: 17px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.06);
-    cursor: pointer;
-    display: grid;
-    place-content: center;
-  }
-  .dwset input[type="checkbox"]:checked {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-  .dwset input[type="checkbox"]:checked::after {
-    content: "";
-    width: 9px;
-    height: 5px;
-    border-left: 2px solid #10121a;
-    border-bottom: 2px solid #10121a;
-    transform: translateY(-1px) rotate(-45deg);
-  }
-  .dwset input[type="color"] {
-    width: 46px;
-    height: 27px;
-    padding: 1px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 6px;
-    background: transparent;
-  }
-  .dwset .font-select { max-width: 190px; }
-  .dwset .loc-field {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-  }
-  .dwset .loc-field input { width: 190px; }
-  .dwset .loc-status {
-    color: var(--bar-fg-dim);
-    font-size: 0.85em;
-    max-width: 250px;
-    text-align: right;
-  }
-  .dwset .loc-status.error { color: var(--critical, #e06c75); }
 `;
 
 let stylesInjected = false;
@@ -159,16 +78,7 @@ export function openWidgetSettings({
     anchor,
     className: "dwset",
     place: x != null ? (el) => placeAtX(el, x) : undefined,
-    // Keep the popup open while a control that needs sustained focus is
-    // active (typing in a field, a select or color dialog open) even if
-    // the pointer wanders off.
-    holdOpen: () => {
-      const a = document.activeElement;
-      return (
-        bodyEl?.contains(a) &&
-        a.matches('input[type="text"], input[type="number"], input[type="color"], select')
-      );
-    },
+    holdOpen: () => hasFocusedControl(bodyEl),
     render(el) {
       bodyEl = el;
       const titleEl = document.createElement("div");
@@ -184,18 +94,7 @@ export function openWidgetSettings({
         none.textContent = "No settings for this widget.";
         rows.append(none);
       }
-      for (const schema of schemas) {
-        const row = document.createElement("div");
-        row.className = "dwset-row";
-        const label = document.createElement("label");
-        label.textContent = schema.label ?? schema.key;
-        const input = createSettingInput(schema, options[schema.key], {
-          invoke,
-          onChange: (value) => onChange(schema.key, value),
-        });
-        row.append(label, input);
-        rows.append(row);
-      }
+      renderSettingsRows(rows, { schemas, options, invoke, onChange });
       el.append(rows);
 
       const sep = document.createElement("div");

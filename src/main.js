@@ -207,10 +207,7 @@ document.addEventListener("contextmenu", (e) => {
     x: e.clientX,
     title: m.widget.name,
     schemas: m.widget.settings ?? [],
-    options: {
-      ...defaultOptions(m.widget),
-      ...currentConfig.widgets[m.configIndex]?.options,
-    },
+    options: currentConfig.widgets[m.configIndex]?.options ?? {},
     onChange(key, value) {
       const entry = currentConfig.widgets[m.configIndex];
       if (!entry) return;

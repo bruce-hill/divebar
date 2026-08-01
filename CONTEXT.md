@@ -45,6 +45,12 @@ invent synonyms.
   chrome; claims the popup space as a yielding participant — denied
   while a popup is open, evicted the moment one opens. Fed by the
   standard `title` attribute, intercepted on hover.
+- **Settings form** — `src/lib/settings-form.js`; renders a settings
+  schema into rows (one control per entry, changes reported as
+  `onChange(key, value)`, values resolved `options[key] ?? default`)
+  and owns all form-control CSS, sized in em and themed per host via
+  `--form-*` variables. Two adapters: the settings window and the
+  widget-settings popup.
 - **Layout editor** — the in-place edit mode on the bar
   (`src/lib/layout-edit.js`): widget interactions are suppressed,
   dragging reorders live, ✕ badges remove, and a toolbar popup under the
