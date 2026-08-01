@@ -26,3 +26,10 @@ invent synonyms.
   logic, never owns the Coordinator slot, yields to popups. Fed by the
   standard `title` attribute, intercepted on hover.
 - **Anchor** — the bar element a panel is centered under.
+- **Reader** — a function in `src-tauri/src/readers.rs` that reads a
+  system source (process output, URL fetch, sysfs/procfs file) and
+  returns JSON for the frontend. Readers are a thin impure fetch over a
+  pure `parse_*` function; the parse functions are internal seams,
+  unit-tested in-module with string fixtures. `readers::run` and
+  `readers::fetch_url` are the only ways divebar spawns one-shot
+  processes.

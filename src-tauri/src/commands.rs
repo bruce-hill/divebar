@@ -314,3 +314,44 @@ pub async fn launch_wifi_gui() -> Result<(), String> {
     });
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn radius_zero_is_one_full_rect() {
+        let mut rects = Vec::new();
+        push_bottom_rounded_rect(&mut rects, 10.0, 20.0, 100.0, 50.0, 0.0);
+        assert_eq!(rects, vec![(10, 20, 100, 50)]);
+    }
+
+    #[test]
+    fn rounded_corners_cut_monotonically_and_stay_in_bounds() {
+        let mut rects = Vec::new();
+        push_bottom_rounded_rect(&mut rects, 0.0, 0.0, 100.0, 50.0, 14.0);
+        // Body rect + one scanline per radius row.
+        assert_eq!(rects.len(), 15);
+        assert_eq!(rects[0], (0, 0, 100, 36));
+        let mut last_width = i32::MAX;
+        for (i, &(x, y, w, h)) in rects[1..].iter().enumerate() {
+            assert_eq!(h, 1);
+            assert_eq!(y, 36 + i as i32);
+            assert!(w <= last_width, "scanlines must narrow toward the bottom");
+            assert!(x >= 0 && x + w <= 100, "scanline must stay inside the rect");
+            assert!(w > 0);
+            last_width = w;
+        }
+        // The bottom row of a 14px-radius corner is meaningfully narrower.
+        assert!(rects.last().unwrap().2 < 100 - 14);
+    }
+
+    #[test]
+    fn radius_clamped_to_half_width() {
+        let mut rects = Vec::new();
+        push_bottom_rounded_rect(&mut rects, 0.0, 0.0, 10.0, 50.0, 14.0);
+        // r clamps to w/2 = 5: one body rect + 5 scanlines.
+        assert_eq!(rects.len(), 6);
+        assert_eq!(rects[0], (0, 0, 10, 45));
+    }
+}

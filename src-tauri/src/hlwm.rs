@@ -77,12 +77,16 @@ fn parse_winid(s: &str) -> Option<u32> {
     u32::from_str_radix(s.trim().trim_start_matches("0x"), 16).ok()
 }
 
+fn read_tags() -> Value {
+    match run_herbstclient(&["tag_status"]) {
+        Some(output) => parse_tag_status(&output),
+        None => Value::Null,
+    }
+}
+
 /// Parses `herbstclient tag_status`: tab-separated entries where the first
 /// character encodes the tag state and the rest is the tag name.
-fn read_tags() -> Value {
-    let Some(output) = run_herbstclient(&["tag_status"]) else {
-        return Value::Null;
-    };
+fn parse_tag_status(output: &str) -> Value {
     let tags: Vec<Value> = output
         .split('\t')
         .map(str::trim)
@@ -114,9 +118,42 @@ fn read_window_title() -> String {
 }
 
 fn run_herbstclient(args: &[&str]) -> Option<String> {
-    let output = Command::new("herbstclient").args(args).output().ok()?;
-    if !output.status.success() {
-        return None;
+    crate::readers::run("herbstclient", args)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn tag_status_flags_map_to_states() {
+        let tags = parse_tag_status("\t#one\t%two\t+three\t-four\t!five\t:six\t.seven\t");
+        assert_eq!(
+            tags,
+            json!([
+                { "name": "one", "state": "focused" },
+                { "name": "two", "state": "focused-elsewhere" },
+                { "name": "three", "state": "visible" },
+                { "name": "four", "state": "visible" },
+                { "name": "five", "state": "urgent" },
+                { "name": "six", "state": "occupied" },
+                { "name": "seven", "state": "empty" },
+            ])
+        );
     }
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+
+    #[test]
+    fn tag_status_skips_empty_and_nameless_entries() {
+        assert_eq!(parse_tag_status(""), json!([]));
+        assert_eq!(parse_tag_status("\t#\t"), json!([]));
+    }
+
+    #[test]
+    fn winid_hex_parsing() {
+        assert_eq!(parse_winid("0x1a2b"), Some(0x1a2b));
+        assert_eq!(parse_winid(" 0x5 \n"), Some(5));
+        assert_eq!(parse_winid(""), None);
+        assert_eq!(parse_winid("not-a-window"), None);
+    }
 }

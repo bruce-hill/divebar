@@ -215,12 +215,7 @@ fn art_data_uri(url: &str) -> Option<String> {
     let bytes: Option<Vec<u8>> = if let Some(path) = url.strip_prefix("file://") {
         std::fs::read(percent_decode(path)).ok()
     } else if url.starts_with("http://") || url.starts_with("https://") {
-        std::process::Command::new("curl")
-            .args(["-sf", "--max-time", "5", url])
-            .output()
-            .ok()
-            .filter(|o| o.status.success())
-            .map(|o| o.stdout)
+        crate::readers::fetch_url(url, 5)
     } else {
         None
     };

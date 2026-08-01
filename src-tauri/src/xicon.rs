@@ -100,3 +100,44 @@ fn best_frame(data: &[u32]) -> Option<(u32, u32, &[u32])> {
     }
     best
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Builds a (width, height, pixels…) frame; pixel values are arbitrary.
+    fn frame(w: u32, h: u32) -> Vec<u32> {
+        let mut v = vec![w, h];
+        v.extend(std::iter::repeat_n(0xffcc_0000, (w * h) as usize));
+        v
+    }
+
+    #[test]
+    fn picks_frame_closest_to_target_size() {
+        let mut data = frame(16, 16);
+        data.extend(frame(64, 64));
+        data.extend(frame(512, 512));
+        let (w, h, pixels) = best_frame(&data).unwrap();
+        assert_eq!((w, h), (64, 64));
+        assert_eq!(pixels.len(), 64 * 64);
+    }
+
+    #[test]
+    fn single_frame_wins_regardless_of_size() {
+        let data = frame(16, 16);
+        assert_eq!(best_frame(&data).map(|(w, h, _)| (w, h)), Some((16, 16)));
+    }
+
+    #[test]
+    fn truncated_frame_is_ignored() {
+        let mut data = frame(16, 16);
+        data.extend([64u32, 64]); // header claims 64x64 but pixels are missing
+        assert_eq!(best_frame(&data).map(|(w, h, _)| (w, h)), Some((16, 16)));
+    }
+
+    #[test]
+    fn empty_or_zero_sized_is_none() {
+        assert_eq!(best_frame(&[]).map(|(w, h, _)| (w, h)), None);
+        assert_eq!(best_frame(&[0, 0]).map(|(w, h, _)| (w, h)), None);
+    }
+}

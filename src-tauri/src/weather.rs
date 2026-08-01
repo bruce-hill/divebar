@@ -4,7 +4,6 @@
 //! the config changes location.
 
 use serde_json::{json, Value};
-use std::process::Command;
 use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -87,16 +86,16 @@ fn fetch(location: &str) -> Value {
         "https://wttr.in/{}?format=j1",
         location.replace(' ', "+")
     );
-    let output = Command::new("curl")
-        .args(["-sf", "--max-time", "15", &url])
-        .output();
-    let Ok(output) = output else {
-        return Value::Null;
-    };
-    if !output.status.success() {
-        return Value::Null;
+    match crate::readers::fetch_url(&url, 15) {
+        Some(body) => parse_wttr(&body),
+        None => Value::Null,
     }
-    let Ok(data) = serde_json::from_slice::<Value>(&output.stdout) else {
+}
+
+/// Extracts the fields the weather widget shows from a wttr.in
+/// `?format=j1` response body.
+fn parse_wttr(body: &[u8]) -> Value {
+    let Ok(data) = serde_json::from_slice::<Value>(body) else {
         return Value::Null;
     };
 
@@ -117,4 +116,47 @@ fn fetch(location: &str) -> Value {
         "humidity": num(&current["humidity"]),
         "area": text(&data["nearest_area"][0]["areaName"][0]["value"]),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SAMPLE: &str = r#"{
+        "current_condition": [{
+            "temp_C": "21", "temp_F": "70",
+            "FeelsLikeC": "20", "FeelsLikeF": "68",
+            "weatherCode": "113",
+            "weatherDesc": [{ "value": "Sunny" }],
+            "humidity": "40"
+        }],
+        "nearest_area": [{ "areaName": [{ "value": "Oakland" }] }]
+    }"#;
+
+    #[test]
+    fn extracts_widget_fields() {
+        assert_eq!(
+            parse_wttr(SAMPLE.as_bytes()),
+            json!({
+                "tempC": 21.0,
+                "tempF": 70.0,
+                "feelsC": 20.0,
+                "feelsF": 68.0,
+                "code": 113,
+                "desc": "Sunny",
+                "humidity": 40.0,
+                "area": "Oakland",
+            })
+        );
+    }
+
+    #[test]
+    fn invalid_json_is_null() {
+        assert_eq!(parse_wttr(b"<html>rate limited</html>"), Value::Null);
+    }
+
+    #[test]
+    fn missing_temperature_is_null() {
+        assert_eq!(parse_wttr(br#"{ "current_condition": [{}] }"#), Value::Null);
+    }
 }
