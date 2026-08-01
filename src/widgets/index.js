@@ -11,6 +11,7 @@ export default [
   "battery",
   "date",
   "time",
+  "tray",
   "cpu",
   "memory",
   "logo",

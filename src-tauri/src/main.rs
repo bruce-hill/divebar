@@ -5,6 +5,7 @@ mod config;
 mod hlwm;
 mod readers;
 mod stats;
+mod tray;
 mod xicon;
 
 #[cfg(target_os = "linux")]
@@ -128,6 +129,7 @@ fn main() {
 
             stats::spawn_stats_emitter(app.handle().clone());
             hlwm::spawn_hlwm_watcher(app.handle().clone());
+            tray::spawn_tray_host(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -138,6 +140,8 @@ fn main() {
             commands::set_popup_open,
             commands::get_env,
             commands::get_hlwm_state,
+            commands::get_tray_state,
+            commands::tray_activate,
             commands::get_config,
             commands::get_default_config,
             commands::save_config,

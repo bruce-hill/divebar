@@ -25,6 +25,7 @@ pub fn default_config() -> Value {
             { "widget": "volume", "options": {} },
             { "widget": "brightness", "options": {} },
             { "widget": "battery", "options": {} },
+            { "widget": "tray", "options": {} },
             { "widget": "date", "options": {} },
             { "widget": "time", "options": {} },
             { "widget": "settings", "options": {} },

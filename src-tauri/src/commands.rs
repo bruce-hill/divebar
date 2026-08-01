@@ -141,6 +141,23 @@ pub async fn get_hlwm_state() -> Result<Value, String> {
     Ok(crate::hlwm::latest_state())
 }
 
+/// Latest tray state for late subscribers.
+#[tauri::command]
+pub async fn get_tray_state() -> Result<Value, String> {
+    Ok(crate::tray::latest_state())
+}
+
+/// Forwards a click on a tray icon to the owning application.
+#[tauri::command]
+pub async fn tray_activate(
+    address: String,
+    secondary: bool,
+    x: i32,
+    y: i32,
+) -> Result<(), String> {
+    crate::tray::activate(address, secondary, x, y).await
+}
+
 #[tauri::command]
 pub async fn get_config() -> Result<Value, String> {
     Ok(crate::config::load())

@@ -59,20 +59,24 @@ impl IconFetcher {
         for &px in pixels {
             rgba.extend_from_slice(&[(px >> 16) as u8, (px >> 8) as u8, px as u8, (px >> 24) as u8]);
         }
-
-        let mut png_data = Vec::new();
-        {
-            let mut encoder = png::Encoder::new(&mut png_data, width, height);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-            let mut writer = encoder.write_header().ok()?;
-            writer.write_image_data(&rgba).ok()?;
-        }
-        Some(format!(
-            "data:image/png;base64,{}",
-            base64::engine::general_purpose::STANDARD.encode(&png_data)
-        ))
+        encode_png_data_uri(width, height, &rgba)
     }
+}
+
+/// Encodes raw RGBA pixels as a PNG data URI.
+pub fn encode_png_data_uri(width: u32, height: u32, rgba: &[u8]) -> Option<String> {
+    let mut png_data = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut png_data, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().ok()?;
+        writer.write_image_data(rgba).ok()?;
+    }
+    Some(format!(
+        "data:image/png;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&png_data)
+    ))
 }
 
 /// _NET_WM_ICON holds a sequence of (width, height, w*h pixels) frames;

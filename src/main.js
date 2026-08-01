@@ -139,11 +139,11 @@ async function renderBar(config) {
 invoke("get_config")
   .then(async (config) => {
     await renderBar(config);
-    // The watcher's initial emit happens before this page loads and is
-    // lost; pull the cached state so widgets aren't blank until the next
-    // real WM event. Skipped if a live event already arrived.
-    const cached = await invoke("get_hlwm_state");
-    dispatch("divebar://hlwm", cached, true);
+    // Initial backend emits happen before this page loads and are lost;
+    // pull the cached states so widgets aren't blank until the next real
+    // event. Skipped if a live event already arrived.
+    dispatch("divebar://hlwm", await invoke("get_hlwm_state"), true);
+    dispatch("divebar://tray", await invoke("get_tray_state"), true);
   })
   .catch((err) => console.error("divebar: startup failed", err));
 
