@@ -12,8 +12,9 @@ const SPEAKER_SVG = `
        stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
     <path d="M4 9.5 H7.5 L12 5.5 V18.5 L7.5 14.5 H4 Z"
           fill="currentColor" stroke="none"/>
-    <path class="wave1" d="M15 9.2 Q17.4 12 15 14.8"/>
-    <path class="wave2" d="M17.2 6.8 Q21.2 12 17.2 17.2"/>
+    <path class="wave1" d="M14.5 10 Q16.2 12 14.5 14"/>
+    <path class="wave2" d="M16.3 8.5 Q19 12 16.3 15.5"/>
+    <path class="wave3" d="M18.1 7 Q21.8 12 18.1 17"/>
     <g class="mute" style="display: none">
       <path d="M15.5 9.5 L20.5 14.5 M20.5 9.5 L15.5 14.5"/>
     </g>
@@ -22,17 +23,20 @@ const SPEAKER_SVG = `
 
 // Updates any speaker SVG (chip icon or popup button) to match the state.
 function paintSpeaker(root, volume) {
-  const wave1 = root.querySelector(".wave1");
-  const wave2 = root.querySelector(".wave2");
+  const waves = [
+    root.querySelector(".wave1"),
+    root.querySelector(".wave2"),
+    root.querySelector(".wave3"),
+  ];
   const mute = root.querySelector(".mute");
-  if (!wave1) return;
+  if (!waves[0]) return;
   mute.style.display = volume.muted ? "" : "none";
-  wave1.style.opacity = volume.muted
-    ? 0
-    : 0.15 + 0.85 * clamp01(volume.percent / 50);
-  wave2.style.opacity = volume.muted
-    ? 0
-    : 0.15 + 0.85 * clamp01((volume.percent - 50) / 50);
+  // Each wave covers a third of the range and fades in across it.
+  waves.forEach((wave, i) => {
+    wave.style.opacity = volume.muted
+      ? 0
+      : 0.15 + 0.85 * clamp01((volume.percent - i * 33.4) / 33.4);
+  });
 }
 
 export default {
