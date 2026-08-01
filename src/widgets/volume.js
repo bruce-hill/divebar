@@ -1,11 +1,15 @@
 // Volume widget: SVG speaker whose sound waves fade in proportionally to
-// the level (inner wave over 0-50%, outer over 50-100%); an X replaces the
-// waves when muted. Clicking the chip opens a pop-down slider; the slider
-// has a speaker button that toggles mute.
+// the level; an X replaces the waves when muted. Clicking the chip opens
+// a pop-down slider; the slider has a speaker button that toggles mute.
 
 import { createSliderPopup } from "../lib/slider-popup.js";
-
-const clamp01 = (x) => Math.min(1, Math.max(0, x));
+import {
+  METER_SETTINGS,
+  meterValueCss,
+  makePeek,
+  makeValueTicker,
+  segmentFill,
+} from "../lib/meter.js";
 
 const SPEAKER_SVG = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -31,43 +35,20 @@ function paintSpeaker(root, volume) {
   const mute = root.querySelector(".mute");
   if (!waves[0]) return;
   mute.style.display = volume.muted ? "" : "none";
-  // Each wave covers a third of the range and fades in across it.
-  waves.forEach((wave, i) => {
-    wave.style.opacity = volume.muted
-      ? 0
-      : 0.15 + 0.85 * clamp01((volume.percent - i * 33.4) / 33.4);
-  });
+  if (volume.muted) waves.forEach((wave) => (wave.style.opacity = 0));
+  else segmentFill(waves, volume.percent, 0.15);
 }
 
 export default {
   name: "volume",
   css: `
     .widget-volume { cursor: pointer; }
-    .widget-volume .value {
-      width: 4ch; /* "100%" */
-      text-align: left;
-      overflow: hidden;
-      transition: width 200ms ease, opacity 200ms ease, margin-left 200ms ease;
-    }
-    /* Collapsed: zero width plus a negative margin to cancel the chip gap */
-    .widget-volume.compact .value {
-      width: 0;
-      opacity: 0;
-      margin-left: -5px;
-    }
+    ${meterValueCss("widget-volume")}
     .widget-volume.muted .value,
     .widget-volume.muted .icon { color: var(--bar-fg-dim); }
     .widget-volume.muted .value { text-decoration: line-through; }
   `,
-  settings: [
-    { key: "showPercent", label: "Show percent", type: "boolean", default: false },
-    {
-      key: "peekOnChange",
-      label: "Show percent briefly on change",
-      type: "boolean",
-      default: true,
-    },
-  ],
+  settings: METER_SETTINGS,
   create({ options, onStats, invoke }) {
     const el = document.createElement("div");
     el.className = "chip clickable widget-volume";
@@ -77,22 +58,11 @@ export default {
       <span class="value">--%</span>
     `;
     const iconEl = el.querySelector(".icon");
-    const valueEl = el.querySelector(".value");
+    const peek = makePeek(el);
+    const ticker = makeValueTicker(el.querySelector(".value"));
     let leadBtn = null;
-    let peekTimer = null;
     let lastPercent = null;
     let lastMuted = null;
-    let lastShownPercent = null;
-
-    // Temporarily reveal the percentage after a change, then re-collapse.
-    function peek() {
-      el.classList.remove("compact");
-      if (peekTimer) clearTimeout(peekTimer);
-      peekTimer = setTimeout(() => {
-        el.classList.add("compact");
-        peekTimer = null;
-      }, 2500);
-    }
 
     function render(volume) {
       el.style.display = volume ? "" : "none";
@@ -102,19 +72,8 @@ export default {
         (volume.percent !== lastPercent || volume.muted !== lastMuted);
       lastPercent = volume.percent;
       lastMuted = volume.muted;
-      if (changed && !options.showPercent && options.peekOnChange) peek();
-      if (changed && valueEl.textContent !== `${volume.percent}%`) {
-        const up = volume.percent > (lastShownPercent ?? volume.percent);
-        valueEl.animate(
-          [
-            { opacity: 0.3, transform: `translateY(${up ? 5 : -5}px)` },
-            { opacity: 1, transform: "none" },
-          ],
-          { duration: 90, easing: "ease-out" },
-        );
-      }
-      lastShownPercent = volume.percent;
-      valueEl.textContent = `${volume.percent}%`;
+      if (changed && !options.showPercent && options.peekOnChange) peek.show();
+      ticker.update(volume.percent, changed);
       el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);
       el.classList.toggle("muted", volume.muted);
@@ -163,7 +122,7 @@ export default {
     return {
       el,
       destroy() {
-        if (peekTimer) clearTimeout(peekTimer);
+        peek.cancel();
         popup.close();
         unsubscribe();
       },

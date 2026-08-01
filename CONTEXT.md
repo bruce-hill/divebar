@@ -7,6 +7,11 @@ invent synonyms.
 - **Widget** — a module on the bar (`src/widgets/*.js`) satisfying the
   contract in `src/main.js`: `{ name, css, settings?, create(ctx) }`.
 - **Chip** — a widget's visual pill on the bar (icon + optional value).
+- **Meter chip** — a chip showing a 0–100 value (volume, brightness):
+  a segment-filled icon plus a collapsible percent that peeks on change.
+  The shared pieces (peek, value ticker, segment fill, settings schema,
+  value CSS) live in `src/lib/meter.js` as a toolkit the widgets compose
+  in their own `create()` — deliberately not a single deep module.
 - **Popup space** — the transparent window area below the bar where
   popups and tooltips render. Only interactive while something is open
   there (see Shape).
