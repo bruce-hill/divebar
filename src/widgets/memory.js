@@ -1,20 +1,48 @@
-// Memory widget: used/total in GiB.
+// Memory widget: RAM icon + fill meter, with an optional text readout
+// (percent, usage, or usage fraction). Exact numbers always available in
+// the tooltip.
 
 const GIB = 1024 ** 3;
+
+// Fixed width per display mode so the chip never resizes.
+const MODE_WIDTH_CH = {
+  percent: 4, // "100%"
+  usage: 8, // "31.8 GiB"
+  fraction: 13, // "31.8 / 32 GiB"
+};
 
 export default {
   name: "memory",
   css: `
-    .widget-memory .value { width: 4ch; text-align: left; } /* "31.8" */
-    .widget-memory .total { width: auto; }
-    .widget-memory .total {
-      color: var(--bar-fg-dim);
+    .widget-memory .value { text-align: left; }
+    .widget-memory .meter {
+      width: calc(var(--chip-height) * 1.5);
+      height: calc(var(--chip-height) * 0.32);
+      border-radius: calc(var(--chip-height) * 0.16);
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
     }
-    .widget-memory.critical .value {
-      color: var(--critical);
+    .widget-memory .meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 400ms ease, background 400ms ease;
     }
+    .widget-memory.warn .meter-fill     { background: var(--warn); }
+    .widget-memory.critical .meter-fill { background: var(--critical); }
+    .widget-memory.critical .value      { color: var(--critical); }
   `,
-  create({ onStats }) {
+  settings: [
+    {
+      key: "display",
+      label: "Text display",
+      type: "select",
+      choices: ["none", "percent", "usage", "fraction"],
+      default: "none",
+    },
+  ],
+  create({ options, onStats }) {
     const el = document.createElement("div");
     el.className = "chip widget-memory";
     el.innerHTML = `
@@ -28,18 +56,35 @@ export default {
           <path d="M5.5 15.5 V18 M8.5 15.5 V18 M11.5 15.5 V18 M14.5 15.5 V18 M17.5 15.5 V18"/>
         </svg>
       </span>
-      <span class="value">--</span>
-      <span class="value total"></span>
+      <span class="value"></span>
+      <div class="meter"><div class="meter-fill"></div></div>
     `;
     const valueEl = el.querySelector(".value");
-    const totalEl = el.querySelector(".total");
+    const fillEl = el.querySelector(".meter-fill");
+
+    const mode = options.display;
+    if (mode === "none") {
+      valueEl.style.display = "none";
+    } else {
+      valueEl.style.width = `${MODE_WIDTH_CH[mode] ?? 4}ch`;
+    }
 
     const unsubscribe = onStats((stats) => {
       const used = stats.memory?.usedBytes ?? 0;
       const total = stats.memory?.totalBytes ?? 0;
-      valueEl.textContent = `${(used / GIB).toFixed(1)}`;
-      totalEl.textContent = `/ ${(total / GIB).toFixed(0)} GiB`;
-      el.classList.toggle("critical", total > 0 && used / total >= 0.9);
+      const pct = total > 0 ? (used / total) * 100 : 0;
+      const usedGib = (used / GIB).toFixed(1);
+      const totalGib = (total / GIB).toFixed(0);
+
+      if (mode === "percent") valueEl.textContent = `${Math.round(pct)}%`;
+      else if (mode === "usage") valueEl.textContent = `${usedGib} GiB`;
+      else if (mode === "fraction")
+        valueEl.textContent = `${usedGib} / ${totalGib} GiB`;
+
+      el.title = `Memory: ${usedGib} / ${totalGib} GiB (${Math.round(pct)}%)`;
+      fillEl.style.width = `${Math.min(pct, 100)}%`;
+      el.classList.toggle("warn", pct >= 75 && pct < 90);
+      el.classList.toggle("critical", pct >= 90);
     });
 
     return { el, destroy: unsubscribe };

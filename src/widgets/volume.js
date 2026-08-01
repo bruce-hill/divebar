@@ -12,13 +12,18 @@ export default {
   css: `
     .widget-volume { cursor: pointer; }
     .widget-volume .value { width: 4ch; text-align: left; } /* "100%" */
+    .widget-volume.compact .value { display: none; }
     .widget-volume.muted .value,
     .widget-volume.muted .icon { color: var(--bar-fg-dim); }
     .widget-volume.muted .value { text-decoration: line-through; }
   `,
-  create({ onStats, invoke }) {
+  settings: [
+    { key: "showPercent", label: "Show percent", type: "boolean", default: false },
+  ],
+  create({ options, onStats, invoke }) {
     const el = document.createElement("div");
     el.className = "chip widget-volume";
+    el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -44,6 +49,7 @@ export default {
       el.style.display = volume ? "" : "none";
       if (!volume) return;
       valueEl.textContent = `${volume.percent}%`;
+      el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);
       el.classList.toggle("muted", volume.muted);
       muteEl.style.display = volume.muted ? "" : "none";

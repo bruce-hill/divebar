@@ -15,10 +15,15 @@ export default {
   css: `
     .widget-brightness { cursor: pointer; }
     .widget-brightness .value { width: 4ch; text-align: left; } /* "100%" */
+    .widget-brightness.compact .value { display: none; }
   `,
-  create({ onStats, invoke }) {
+  settings: [
+    { key: "showPercent", label: "Show percent", type: "boolean", default: false },
+  ],
+  create({ options, onStats, invoke }) {
     const el = document.createElement("div");
     el.className = "chip widget-brightness";
+    el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -47,6 +52,7 @@ export default {
       if (!brightness) return;
       const t = brightness.percent / 100;
       valueEl.textContent = `${brightness.percent}%`;
+      el.title = `Brightness: ${brightness.percent}%`;
       popup.setValue(brightness.percent);
       coreEl.setAttribute("r", (3.0 + 1.4 * t).toFixed(2));
       const outer = RAY_OUTER_MIN + (RAY_OUTER_MAX - RAY_OUTER_MIN) * t;

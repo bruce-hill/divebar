@@ -30,9 +30,9 @@ export default {
     .widget-workspaces .tag {
       position: relative;
       z-index: 1;
-      min-width: 1.5em;
+      min-width: 1.3em;
       height: calc(var(--chip-height) - 6px);
-      padding: 0 0.35em;
+      padding: 0 0.25em;
       border: none;
       border-radius: calc((var(--chip-height) - 6px) / 2);
       background: transparent;

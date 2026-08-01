@@ -12,6 +12,7 @@ export default {
   css: `
     .widget-battery { display: none; }
     .widget-battery .value { width: 4ch; text-align: left; } /* "100%" */
+    .widget-battery.compact .value { display: none; }
     /* Wide battery so the fill level reads accurately at a glance */
     .widget-battery .icon svg {
       width: calc(var(--icon-size) * 5 / 3);
@@ -23,6 +24,7 @@ export default {
     .widget-battery.low .value { color: var(--critical); }
   `,
   settings: [
+    { key: "showPercent", label: "Show percent", type: "boolean", default: false },
     {
       key: "lowThreshold",
       label: "Low battery threshold (%)",
@@ -35,6 +37,7 @@ export default {
   create({ options, onStats }) {
     const el = document.createElement("div");
     el.className = "chip widget-battery";
+    el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 40 24" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -58,6 +61,7 @@ export default {
       el.classList.toggle("present", battery != null);
       if (battery == null) return;
       valueEl.textContent = `${battery.percent}%`;
+      el.title = `Battery: ${battery.percent}%${battery.charging ? " (charging)" : ""}`;
       fillEl.setAttribute(
         "width",
         ((battery.percent / 100) * FILL_MAX_WIDTH).toFixed(2),

@@ -9,12 +9,17 @@ export default {
   name: "wifi",
   css: `
     .widget-wifi { cursor: pointer; }
+    .widget-wifi.compact .value { display: none; }
     .widget-wifi.offline .icon,
     .widget-wifi.offline .value { color: var(--bar-fg-dim); }
   `,
-  create({ onStats, invoke }) {
+  settings: [
+    { key: "showSsid", label: "Show network name", type: "boolean", default: true },
+  ],
+  create({ options, onStats, invoke }) {
     const el = document.createElement("div");
     el.className = "chip widget-wifi";
+    el.classList.toggle("compact", !options.showSsid);
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -49,6 +54,9 @@ export default {
       el.classList.toggle("offline", !connected);
       slashEl.style.display = connected ? "none" : "";
       valueEl.textContent = connected ? wifi.ssid : "offline";
+      el.title = connected
+        ? `${wifi.ssid}${wifi.signalPercent != null ? ` (${wifi.signalPercent}%)` : ""}`
+        : "Wifi: offline — click to configure";
 
       // Each arc covers a third of the signal range and fades in
       // continuously across it.

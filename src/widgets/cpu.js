@@ -4,26 +4,31 @@ export default {
   name: "cpu",
   css: `
     .widget-cpu .value { width: 4ch; text-align: left; } /* "100%" */
+    .widget-cpu.compact .value { display: none; }
     .widget-cpu .meter {
-      width: 36px;
-      height: 4px;
-      border-radius: 2px;
+      width: calc(var(--chip-height) * 1.5);
+      height: calc(var(--chip-height) * 0.32);
+      border-radius: calc(var(--chip-height) * 0.16);
       background: rgba(255, 255, 255, 0.12);
       overflow: hidden;
     }
     .widget-cpu .meter-fill {
       height: 100%;
       width: 0%;
-      border-radius: 2px;
+      border-radius: inherit;
       background: var(--accent);
       transition: width 400ms ease, background 400ms ease;
     }
     .widget-cpu.warn .meter-fill     { background: var(--warn); }
     .widget-cpu.critical .meter-fill { background: var(--critical); }
   `,
-  create({ onStats }) {
+  settings: [
+    { key: "showPercent", label: "Show percent", type: "boolean", default: false },
+  ],
+  create({ options, onStats }) {
     const el = document.createElement("div");
     el.className = "chip widget-cpu";
+    el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -45,6 +50,7 @@ export default {
     const unsubscribe = onStats((stats) => {
       const pct = stats.cpu?.usagePercent ?? 0;
       valueEl.textContent = `${Math.round(pct)}%`;
+      el.title = `CPU: ${Math.round(pct)}%`;
       fillEl.style.width = `${Math.min(pct, 100)}%`;
       el.classList.toggle("warn", pct >= 60 && pct < 85);
       el.classList.toggle("critical", pct >= 85);
