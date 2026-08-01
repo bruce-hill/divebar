@@ -1,15 +1,12 @@
-// Pop-down context menu for tray items (rendered dbusmenu). Renders in the
-// transparent window space below the bar, like the slider popups, and
-// shares the same input-region mechanics via set_popup_open. Submenus
-// expand inline; clicking a leaf item forwards to the app via the
-// tray_menu_click command.
+// Pop-down context menu for tray items (rendered dbusmenu). Popup
+// mechanics live in popup.js; this module renders the item tree.
+// Submenus expand inline; clicking a leaf item forwards to the app via
+// the tray_menu_click command.
 
-import { popupWillOpen, popupDidClose } from "./popup-state.js";
+import { createPopup } from "./popup.js";
 
 const CSS = `
   .dmenu {
-    position: fixed;
-    top: calc(var(--bar-height) + 8px);
     min-width: 200px;
     max-width: 340px;
     max-height: 290px;
@@ -17,18 +14,7 @@ const CSS = `
     display: flex;
     flex-direction: column;
     padding: 6px;
-    background: var(--bar-bg);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-    font-family: var(--font);
     font-size: calc(var(--bar-font) * 0.85);
-    z-index: 10;
-  }
-  :root.no-compositor .dmenu {
-    border-radius: 0 0 14px 14px;
-    box-shadow: none;
-    top: var(--bar-height);
   }
   .dmenu-item {
     display: flex;
@@ -75,58 +61,20 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
     document.head.appendChild(style);
   }
 
-  const el = document.createElement("div");
-  el.className = "dmenu";
-  let closed = false;
-  let leaveTimer = null;
-
-  const disarm = () => {
-    if (leaveTimer) clearTimeout(leaveTimer);
-    leaveTimer = null;
-  };
-  const arm = () => {
-    disarm();
-    leaveTimer = setTimeout(close, 900);
-  };
-
-  function onDocDown(e) {
-    if (!el.contains(e.target) && !anchor.contains(e.target)) close();
-  }
-
-  function close() {
-    if (closed) return;
-    closed = true;
-    disarm();
-    document.removeEventListener("pointerdown", onDocDown, true);
-    anchor.removeEventListener("pointerenter", disarm);
-    anchor.removeEventListener("pointerleave", arm);
-    const anim = el.animate(
-      [
-        { opacity: 1, transform: "none" },
-        { opacity: 0, transform: "translateY(-6px)" },
-      ],
-      { duration: 110, easing: "ease-in" },
-    );
-    anim.onfinish = () => el.remove();
-    popupDidClose(close);
-    invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
-      console.error("divebar: set_popup_open failed", err),
-    );
-  }
-
-  function sendRect() {
-    const r = el.getBoundingClientRect();
-    invoke("set_popup_open", {
-      open: true,
-      rect: { x: r.x, y: r.y, width: r.width, height: r.height },
-    }).catch((err) => console.error("divebar: set_popup_open failed", err));
-  }
+  const popup = createPopup({
+    anchor,
+    invoke,
+    className: "dmenu",
+    render(el) {
+      buildItems(el, items);
+    },
+  });
 
   function pick(id) {
     invoke("tray_menu_click", { address, menuPath, id }).catch((err) =>
       console.error("divebar: tray_menu_click failed", err),
     );
-    close();
+    popup.close();
   }
 
   function buildItems(container, list) {
@@ -158,7 +106,7 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
         btn.addEventListener("click", () => {
           sub.classList.toggle("open");
           arrow.textContent = sub.classList.contains("open") ? "▾" : "▸";
-          sendRect(); // popup size changed; update the window shape
+          popup.refreshShape(); // popup size changed; update the window shape
         });
         container.append(btn, sub);
       } else {
@@ -168,31 +116,5 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
     }
   }
 
-  buildItems(el, items);
-  document.body.appendChild(el);
-  el.animate(
-    [
-      { opacity: 0, transform: "translateY(-8px)" },
-      { opacity: 1, transform: "none" },
-    ],
-    { duration: 150, easing: "ease-out" },
-  );
-
-  // Center under the anchor, clamped to the screen edges.
-  const rect = anchor.getBoundingClientRect();
-  const width = el.offsetWidth;
-  const left = Math.min(
-    Math.max(8, rect.left + rect.width / 2 - width / 2),
-    window.innerWidth - width - 8,
-  );
-  el.style.left = `${left}px`;
-
-  document.addEventListener("pointerdown", onDocDown, true);
-  el.addEventListener("pointerenter", disarm);
-  el.addEventListener("pointerleave", arm);
-  anchor.addEventListener("pointerenter", disarm);
-  anchor.addEventListener("pointerleave", arm);
-
-  popupWillOpen(close);
-  sendRect();
+  popup.open();
 }

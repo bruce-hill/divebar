@@ -1,7 +1,7 @@
-// Month-grid calendar pop-down for the date widget. Same popup mechanics
-// as the sliders/menus (shape integration, coordinator, animations).
+// Month-grid calendar pop-down for the date widget. Popup mechanics live
+// in popup.js; this module renders the month grid.
 
-import { popupWillOpen, popupDidClose } from "./popup-state.js";
+import { createPopup } from "./popup.js";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -11,23 +11,10 @@ const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const CSS = `
   .dcal {
-    position: fixed;
-    top: calc(var(--bar-height) + 8px);
     padding: 14px 16px;
-    background: var(--bar-bg);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
-    font-family: var(--font);
     font-size: calc(var(--bar-font) * 0.8);
     color: var(--bar-fg);
-    z-index: 10;
     user-select: none;
-  }
-  :root.no-compositor .dcal {
-    border-radius: 0 0 14px 14px;
-    box-shadow: none;
-    top: var(--bar-height);
   }
   .dcal-head {
     display: flex;
@@ -82,34 +69,13 @@ export function createCalendarPopup({ anchor, invoke }) {
     document.head.appendChild(style);
   }
 
-  let popupEl = null;
+  let bodyEl = null;
   let viewYear = 0;
   let viewMonth = 0;
-  let leaveTimer = null;
-
-  const disarm = () => {
-    if (leaveTimer) clearTimeout(leaveTimer);
-    leaveTimer = null;
-  };
-  const arm = () => {
-    disarm();
-    leaveTimer = setTimeout(close, 900);
-  };
-  function onDocDown(e) {
-    if (!popupEl.contains(e.target) && !anchor.contains(e.target)) close();
-  }
-
-  function sendRect() {
-    const r = popupEl.getBoundingClientRect();
-    invoke("set_popup_open", {
-      open: true,
-      rect: { x: r.x, y: r.y, width: r.width, height: r.height },
-    }).catch((err) => console.error("divebar: set_popup_open failed", err));
-  }
 
   function renderMonth() {
     const now = new Date();
-    popupEl.replaceChildren();
+    bodyEl.replaceChildren();
 
     const head = document.createElement("div");
     head.className = "dcal-head";
@@ -151,7 +117,7 @@ export function createCalendarPopup({ anchor, invoke }) {
       }
       grid.append(cell);
     }
-    popupEl.append(head, grid);
+    bodyEl.append(head, grid);
   }
 
   function shiftMonth(delta) {
@@ -164,65 +130,21 @@ export function createCalendarPopup({ anchor, invoke }) {
       viewYear++;
     }
     renderMonth();
-    sendRect();
+    popup.refreshShape();
   }
 
-  function open() {
-    if (popupEl) return;
-    popupWillOpen(close);
-    const now = new Date();
-    viewYear = now.getFullYear();
-    viewMonth = now.getMonth();
+  const popup = createPopup({
+    anchor,
+    invoke,
+    className: "dcal",
+    render(el) {
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      bodyEl = el;
+      renderMonth();
+    },
+  });
 
-    popupEl = document.createElement("div");
-    popupEl.className = "dcal";
-    renderMonth();
-    document.body.appendChild(popupEl);
-    popupEl.animate(
-      [
-        { opacity: 0, transform: "translateY(-8px)" },
-        { opacity: 1, transform: "none" },
-      ],
-      { duration: 150, easing: "ease-out" },
-    );
-
-    const rect = anchor.getBoundingClientRect();
-    const width = popupEl.offsetWidth;
-    const left = Math.min(
-      Math.max(8, rect.left + rect.width / 2 - width / 2),
-      window.innerWidth - width - 8,
-    );
-    popupEl.style.left = `${left}px`;
-
-    document.addEventListener("pointerdown", onDocDown, true);
-    popupEl.addEventListener("pointerenter", disarm);
-    popupEl.addEventListener("pointerleave", arm);
-    anchor.addEventListener("pointerenter", disarm);
-    anchor.addEventListener("pointerleave", arm);
-    sendRect();
-  }
-
-  function close() {
-    if (!popupEl) return;
-    disarm();
-    document.removeEventListener("pointerdown", onDocDown, true);
-    anchor.removeEventListener("pointerenter", disarm);
-    anchor.removeEventListener("pointerleave", arm);
-    const closingEl = popupEl;
-    popupEl = null;
-    popupDidClose(close);
-    const anim = closingEl.animate(
-      [
-        { opacity: 1, transform: "none" },
-        { opacity: 0, transform: "translateY(-6px)" },
-      ],
-      { duration: 110, easing: "ease-in" },
-    );
-    anim.onfinish = () => closingEl.remove();
-    invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
-      console.error("divebar: set_popup_open failed", err),
-    );
-  }
-
-  return { open, close, toggle: () => (popupEl ? close() : open()) };
+  return { open: popup.open, close: popup.close, toggle: popup.toggle };
 }

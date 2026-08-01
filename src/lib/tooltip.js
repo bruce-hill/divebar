@@ -4,8 +4,12 @@
 // `title` attribute on hover — widgets keep using el.title and get slick
 // tooltips for free (the attribute is stashed to data-tip so the native
 // one never shows).
+//
+// Not a popup (no dismissal, no coordinator slot — it yields to real
+// popups instead), but it shares the panel mechanics from panel.js.
 
 import { hasOpenPopup } from "./popup-state.js";
+import { centerUnder, animateIn, sendShape, clearShape } from "./panel.js";
 
 const SHOW_DELAY_MS = 350;
 
@@ -62,14 +66,6 @@ export function initTooltips(invoke) {
     }
   }
 
-  function setShape(open, rect) {
-    if (open === shapeOpen && !open) return;
-    shapeOpen = open;
-    invoke("set_popup_open", { open, rect: rect ?? null }).catch((err) =>
-      console.error("divebar: set_popup_open failed", err),
-    );
-  }
-
   function hide() {
     if (showTimer) clearTimeout(showTimer);
     showTimer = null;
@@ -79,8 +75,8 @@ export function initTooltips(invoke) {
       tipEl.remove();
       tipEl = null;
       // Don't shrink the shape if a real popup owns it now.
-      if (!hasOpenPopup()) setShape(false);
-      else shapeOpen = false;
+      if (shapeOpen && !hasOpenPopup()) clearShape(invoke);
+      shapeOpen = false;
     }
   }
 
@@ -91,24 +87,10 @@ export function initTooltips(invoke) {
     tipEl.className = "dtooltip";
     tipEl.textContent = text;
     document.body.appendChild(tipEl);
-
-    const rect = target.getBoundingClientRect();
-    const width = tipEl.offsetWidth;
-    const left = Math.min(
-      Math.max(8, rect.left + rect.width / 2 - width / 2),
-      window.innerWidth - width - 8,
-    );
-    tipEl.style.left = `${left}px`;
-    tipEl.animate(
-      [
-        { opacity: 0, transform: "translateY(-4px)" },
-        { opacity: 1, transform: "none" },
-      ],
-      { duration: 120, easing: "ease-out" },
-    );
-
-    const r = tipEl.getBoundingClientRect();
-    setShape(true, { x: r.x, y: r.y, width: r.width, height: r.height });
+    centerUnder(tipEl, target);
+    animateIn(tipEl, { dy: -4, duration: 120 });
+    shapeOpen = true;
+    sendShape(invoke, tipEl);
   }
 
   document.addEventListener("pointerover", (e) => {
