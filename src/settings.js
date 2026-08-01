@@ -308,7 +308,7 @@ function addControls() {
   }
 
   const select = el("select");
-  for (const name of WIDGET_NAMES) {
+  for (const name of [...WIDGET_NAMES].sort()) {
     if (!modules[name]) continue;
     const opt = el("option", "", name);
     opt.value = name;
