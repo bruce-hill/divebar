@@ -251,7 +251,7 @@ pub async fn open_settings(
         tauri::WebviewUrl::App("settings.html".into()),
     )
     .title("divebar settings")
-    .inner_size(560.0 * zoom, 760.0 * zoom)
+    .inner_size(560.0 * zoom, 520.0 * zoom)
     .center()
     .build()
     .map_err(|e| e.to_string())?;

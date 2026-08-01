@@ -37,6 +37,8 @@ let stylesInjected = false;
 // re-arms instead of closing (e.g. mid-drag on a slider).
 // place (optional): positions the panel, replacing the default
 // centered-under-the-anchor placement; re-run when the content resizes.
+// onClose (optional): runs whenever the popup closes, by any path —
+// for callers whose state must outlive a single open/close cycle.
 export function createPopup({
   anchor,
   invoke,
@@ -45,6 +47,7 @@ export function createPopup({
   holdOpen,
   leaveDelay = 900,
   place,
+  onClose,
 }) {
   if (!stylesInjected) {
     stylesInjected = true;
@@ -124,6 +127,7 @@ export function createPopup({
     popupDidClose(close);
     animateOut(closingEl);
     clearShape(invoke);
+    onClose?.();
   }
 
   return {

@@ -16,6 +16,7 @@
 import { initTooltips } from "./lib/tooltip.js";
 import { applyBarStyle } from "./lib/bar-config.js";
 import { openWidgetSettings } from "./lib/widget-settings-popup.js";
+import { createLayoutEditor } from "./lib/layout-edit.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -84,6 +85,18 @@ function defaultOptions(widget) {
 
 let mounted = []; // [{ key, instance, widget, configIndex }] in bar order
 let currentConfig = null;
+
+// In-place layout editing (drag to reorder, ✕ to remove, toolbar under
+// the bar). Entered from the right-click popup or the settings window.
+const layoutEditor = createLayoutEditor({
+  barEl: document.getElementById("bar"),
+  invoke,
+  getConfig: () => currentConfig,
+  entryFor: (el) => {
+    const m = mounted.find((m) => m.instance.el === el);
+    return m ? currentConfig?.widgets?.[m.configIndex] : null;
+  },
+});
 
 async function createInstance({ widget: name, options = {} }) {
   try {
@@ -159,12 +172,20 @@ invoke("get_config")
   })
   .catch((err) => console.error("divebar: startup failed", err));
 
-// Live-apply config saved from the settings window.
-listen("divebar://config", (event) => renderBar(event.payload));
+// Live-apply config saved from the settings window or the layout editor.
+// Re-decorate afterwards so widgets added mid-edit get their edit chrome.
+listen("divebar://config", async (event) => {
+  await renderBar(event.payload);
+  layoutEditor.refresh();
+});
 
-// Right-click a widget: its settings inline in a pop-down (plus a link
-// to the full settings window). Right-click elsewhere on the bar (or
-// inside an open popup): the settings window directly.
+// The settings window's "Edit bar layout…" button hands off to the bar.
+listen("divebar://edit-layout", () => layoutEditor.start());
+
+// Right-click a widget: its settings inline in a pop-down (plus links
+// to layout editing and the full settings window). Right-click
+// elsewhere on the bar (or inside an open popup): the settings window
+// directly. While layout editing, the editor swallows the event.
 const openGlobalSettings = () =>
   invoke("open_settings").catch((err) =>
     console.error("divebar: open_settings failed", err),
@@ -196,6 +217,7 @@ document.addEventListener("contextmenu", (e) => {
         console.error("divebar: save_config failed", err),
       );
     },
+    onEditLayout: () => layoutEditor.start(),
     onOpenGlobal: openGlobalSettings,
   });
 });

@@ -104,108 +104,22 @@ section > h2 {
   margin-bottom: 8px;
 }
 
-/* --- Widget rows ----------------------------------------------------------- */
+/* --- Section panels -------------------------------------------------------- */
 
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 20px;
-  border-radius: 8px;
-}
-
-body.dragging .rows {
-  outline: 1px dashed rgba(122, 162, 247, 0.35);
-  outline-offset: 3px;
-}
-
-.rows.empty {
-  min-height: 34px;
-  outline: 1px dashed rgba(255, 255, 255, 0.1);
-  outline-offset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rows.empty::after {
-  content: "empty — drag widgets here or add below";
-  color: rgba(255, 255, 255, 0.25);
-  font-size: 18px;
-}
-
-.row {
+.panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-}
-
-.row.ghost { opacity: 0.4; }
-
-.row-main {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  cursor: grab;
-}
-
-.row-main:hover {
-  background: var(--panel-hover);
-  border-radius: 8px;
-}
-
-.row .handle {
-  color: var(--fg-dim);
-  font-size: 21px;
-  letter-spacing: -1px;
-}
-
-.row .name {
-  flex: 1;
-  font-weight: 500;
-}
-
-.row .badge {
-  font-size: 16px;
-  color: var(--fg-dim);
-}
-
-.row .x {
-  color: var(--fg-dim);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 20px;
-}
-
-.row .x:hover {
-  color: var(--critical);
-  background: rgba(247, 118, 142, 0.12);
-}
-
-.row .chev {
-  color: var(--fg-dim);
-  font-size: 16px;
-  transition: transform 150ms ease;
-}
-
-.row.expanded .chev {
-  transform: rotate(90deg);
-}
-
-/* Inline settings under an expanded row */
-.row-settings {
-  border-top: 1px solid var(--border);
-  padding: 10px 12px 12px 34px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  align-items: stretch;
+  gap: 10px;
 }
 
-.row-settings .none {
+.panel .hint {
   color: var(--fg-dim);
-  font-size: 20px;
+  font-size: 19px;
 }
 
 .setting-row {
@@ -219,24 +133,6 @@ body.dragging .rows {
   color: var(--fg);
   font-size: 20px;
 }
-
-/* Drop insertion marker */
-.drop-marker {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--accent);
-  margin: -1px 4px;
-}
-
-/* --- Add widget row -------------------------------------------------------- */
-
-.add-row {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.add-row select { flex: 1; }
 
 /* --- Form controls --------------------------------------------------------- */
 

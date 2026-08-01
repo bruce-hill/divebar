@@ -1,24 +1,17 @@
-// Settings window: one vertical list of widget rows matching the bar's
-// flex order. Drag rows to reorder, click a row to expand its settings
-// inline, use "+ Add widget" to append, ✕ to remove. Every change saves
-// and applies to the real bar immediately.
+// Settings window: bar-level settings (height, padding, accent, font)
+// plus a hand-off button to the bar's in-place layout editor — widget
+// arrangement and per-widget settings live on the bar itself (drag in
+// edit mode, right-click a widget). Every change saves and applies to
+// the real bar immediately.
 
-import WIDGET_NAMES from "./widgets/index.js";
 import { BAR_SETTINGS } from "./lib/bar-config.js";
 import { createSettingInput } from "./lib/setting-inputs.js";
 
-const modules = {};
 let state = { widgets: [] };
-let expandedEntry = null;
-let adding = false; // whether the "+ Add widget" picker is open
-let dragData = null; // { index }
 let invoke = null;
 
 const statusEl = document.getElementById("status");
 const sectionsEl = document.getElementById("sections");
-
-const marker = document.createElement("div");
-marker.className = "drop-marker";
 
 // --- Status + persistence --------------------------------------------------
 
@@ -46,11 +39,6 @@ function scheduleSave() {
   }, 250);
 }
 
-function mutated() {
-  render();
-  scheduleSave();
-}
-
 // --- Helpers ---------------------------------------------------------------
 
 function el(tag, className, text) {
@@ -60,200 +48,62 @@ function el(tag, className, text) {
   return node;
 }
 
-function endDrag() {
-  dragData = null;
-  document.body.classList.remove("dragging");
-  marker.remove();
-}
-
-// --- Widget rows -----------------------------------------------------------
-
-function settingInput(schema, entry) {
-  return createSettingInput(
-    schema,
-    entry.options?.[schema.key] ?? schema.default,
-    {
-      invoke,
-      onChange(value) {
-        (entry.options ??= {})[schema.key] = value;
-        scheduleSave();
-      },
-    },
-  );
-}
-
-function rowFor(entry, index) {
-  const row = el("div", "row");
-  const schemas = modules[entry.widget]?.settings ?? [];
-  const expanded = entry === expandedEntry;
-  if (expanded) row.classList.add("expanded");
-
-  const main = el("div", "row-main");
-  main.draggable = true;
-  main.append(el("span", "handle", "⠿"));
-  main.append(el("span", "name", entry.widget));
-  if (schemas.length > 0) {
-    main.append(el("span", "badge", `${schemas.length} setting${schemas.length > 1 ? "s" : ""}`));
-  }
-  main.append(el("span", "chev", "▶"));
-
-  const x = el("span", "x", "✕");
-  x.title = "Remove";
-  x.addEventListener("click", (e) => {
-    e.stopPropagation();
-    state.widgets.splice(index, 1);
-    if (entry === expandedEntry) expandedEntry = null;
-    mutated();
-  });
-  main.append(x);
-
-  main.addEventListener("click", () => {
-    expandedEntry = expanded ? null : entry;
-    render();
-  });
-
-  main.addEventListener("dragstart", (e) => {
-    dragData = { index };
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", entry.widget);
-    document.body.classList.add("dragging");
-    requestAnimationFrame(() => row.classList.add("ghost"));
-  });
-  main.addEventListener("dragend", () => {
-    row.classList.remove("ghost");
-    endDrag();
-  });
-
-  row.append(main);
-
-  if (expanded) {
-    const settings = el("div", "row-settings");
-    if (schemas.length === 0) {
-      settings.append(el("span", "none", "This widget has no configurable settings."));
-    } else {
-      for (const schema of schemas) {
-        const srow = el("div", "setting-row");
-        srow.append(el("label", "", schema.label ?? schema.key));
-        srow.append(settingInput(schema, entry));
-        settings.append(srow);
-      }
-    }
-    row.append(settings);
-  }
-  return row;
-}
-
-// Insertion index from the pointer position among a list's rows.
-function dropIndex(rowsEl, clientY) {
-  const rows = [...rowsEl.querySelectorAll(".row")];
-  for (let i = 0; i < rows.length; i++) {
-    const rect = rows[i].getBoundingClientRect();
-    if (clientY < rect.top + rect.height / 2) return i;
-  }
-  return rows.length;
-}
-
-function setupRowsDnD(rowsEl) {
-  rowsEl.addEventListener("dragover", (e) => {
-    if (!dragData) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const index = dropIndex(rowsEl, e.clientY);
-    const rows = [...rowsEl.querySelectorAll(".row")];
-    rowsEl.insertBefore(marker, rows[index] ?? null);
-  });
-
-  rowsEl.addEventListener("dragleave", (e) => {
-    if (!rowsEl.contains(e.relatedTarget) && marker.parentElement === rowsEl) {
-      marker.remove();
-    }
-  });
-
-  rowsEl.addEventListener("drop", (e) => {
-    if (!dragData) return;
-    e.preventDefault();
-    let index = dropIndex(rowsEl, e.clientY);
-    const [entry] = state.widgets.splice(dragData.index, 1);
-    if (dragData.index < index) index--;
-    state.widgets.splice(index, 0, entry);
-    endDrag();
-    mutated();
-  });
-}
-
-// --- Bar settings ----------------------------------------------------------
+// --- Sections --------------------------------------------------------------
 
 function barSection() {
   const section = el("section");
   section.append(el("h2", "", "Bar"));
-  const body = el("div", "row");
-  const inner = el("div", "row-settings");
-  inner.style.borderTop = "none";
-  const entry = { options: (state.bar ??= {}) };
+  const panel = el("div", "panel");
+  const options = (state.bar ??= {});
   for (const schema of BAR_SETTINGS) {
     const row = el("div", "setting-row");
     row.append(el("label", "", schema.label));
-    row.append(settingInput(schema, entry));
-    inner.append(row);
+    row.append(
+      createSettingInput(schema, options[schema.key] ?? schema.default, {
+        invoke,
+        onChange(value) {
+          options[schema.key] = value;
+          scheduleSave();
+        },
+      }),
+    );
+    panel.append(row);
   }
-  body.append(inner);
-  section.append(body);
+  section.append(panel);
   return section;
 }
 
-// --- Add widget ------------------------------------------------------------
-
-function addControls() {
-  const wrap = el("div", "add-row");
-  if (!adding) {
-    const btn = el("button", "", "＋ Add widget");
-    btn.addEventListener("click", () => {
-      adding = true;
-      render();
-    });
-    wrap.append(btn);
-    return wrap;
-  }
-
-  const select = el("select");
-  for (const name of [...WIDGET_NAMES].sort()) {
-    if (!modules[name]) continue;
-    const opt = el("option", "", name);
-    opt.value = name;
-    select.append(opt);
-  }
-  const add = el("button", "", "Add");
-  add.addEventListener("click", () => {
-    const entry = { widget: select.value, options: {} };
-    state.widgets.push(entry);
-    expandedEntry = entry;
-    adding = false;
-    mutated();
+function widgetsSection() {
+  const section = el("section");
+  section.append(el("h2", "", "Widgets"));
+  const panel = el("div", "panel");
+  panel.append(
+    el(
+      "p",
+      "hint",
+      "Widgets are arranged on the bar itself: edit mode lets you drag " +
+        "them around, add, and remove; right-click any widget to change " +
+        "its settings.",
+    ),
+  );
+  const btn = el("button", "", "Edit bar layout…");
+  btn.addEventListener("click", async () => {
+    try {
+      await window.__TAURI__.event.emit("divebar://edit-layout");
+      await invoke("close_settings");
+    } catch (err) {
+      setStatus(`Edit layout failed: ${err}`, "error");
+    }
   });
-  const cancel = el("button", "", "Cancel");
-  cancel.addEventListener("click", () => {
-    adding = false;
-    render();
-  });
-  wrap.append(select, add, cancel);
-  return wrap;
+  panel.append(btn);
+  section.append(panel);
+  return section;
 }
 
 // --- Render + init ---------------------------------------------------------
 
 function render() {
-  sectionsEl.replaceChildren();
-  sectionsEl.append(barSection());
-  const section = el("section");
-  section.append(el("h2", "", "Widgets (bar order, left to right)"));
-  const rowsEl = el("div", "rows");
-  const list = (state.widgets ??= []);
-  list.forEach((entry, i) => rowsEl.append(rowFor(entry, i)));
-  rowsEl.classList.toggle("empty", list.length === 0);
-  setupRowsDnD(rowsEl);
-  section.append(rowsEl);
-  section.append(addControls());
-  sectionsEl.append(section);
+  sectionsEl.replaceChildren(barSection(), widgetsSection());
 }
 
 document.getElementById("close").addEventListener("click", () => {
@@ -265,9 +115,8 @@ document.getElementById("close").addEventListener("click", () => {
 document.getElementById("reset").addEventListener("click", async () => {
   try {
     state = await invoke("get_default_config");
-    expandedEntry = null;
-    adding = false;
-    mutated();
+    render();
+    scheduleSave();
     setStatus("Reset to defaults");
   } catch (err) {
     setStatus(`Reset failed: ${err}`, "error");
@@ -279,18 +128,15 @@ async function init() {
     throw new Error("Tauri API not available in this window");
   }
   invoke = window.__TAURI__.core.invoke;
-
-  for (const name of WIDGET_NAMES) {
-    try {
-      modules[name] = (await import(`./widgets/${name}.js`)).default;
-    } catch (err) {
-      console.error(`divebar settings: failed to load widget "${name}"`, err);
-    }
-  }
-
   state = await invoke("get_config");
   state.widgets ??= [];
   state.bar ??= {};
+  // The bar window saves configs too (layout editor, right-click widget
+  // settings). Adopt its widget changes so a later save from here
+  // doesn't clobber them; bar-level settings are only edited here.
+  window.__TAURI__.event.listen("divebar://config", (event) => {
+    if (event.payload?.widgets) state.widgets = event.payload.widgets;
+  });
   render();
 }
 

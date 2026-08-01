@@ -1,8 +1,8 @@
 // Right-click settings for a bar widget: its schema-driven settings
-// rendered inline in a pop-down, then a separator and a link to the
-// full divebar settings window. Popup mechanics live in popup.js and
-// the inputs in setting-inputs.js; persistence stays with the caller
-// via onChange(key, value).
+// rendered inline in a pop-down, then a separator and links to the bar
+// layout editor and the full divebar settings window. Popup mechanics
+// live in popup.js and the inputs in setting-inputs.js; persistence
+// stays with the caller via onChange(key, value).
 
 import { createPopup } from "./popup.js";
 import { placeAtX } from "./panel.js";
@@ -142,6 +142,7 @@ export function openWidgetSettings({
   schemas,
   options,
   onChange,
+  onEditLayout,
   onOpenGlobal,
   x,
 }) {
@@ -200,6 +201,17 @@ export function openWidgetSettings({
 
       const sep = document.createElement("div");
       sep.className = "dwset-sep";
+      el.append(sep);
+      if (onEditLayout) {
+        const edit = document.createElement("button");
+        edit.className = "dwset-global";
+        edit.textContent = "Edit bar layout…";
+        edit.addEventListener("click", () => {
+          popup.close();
+          onEditLayout();
+        });
+        el.append(edit);
+      }
       const global = document.createElement("button");
       global.className = "dwset-global";
       global.textContent = "divebar settings…";
@@ -207,7 +219,7 @@ export function openWidgetSettings({
         popup.close();
         onOpenGlobal();
       });
-      el.append(sep, global);
+      el.append(global);
     },
   });
 

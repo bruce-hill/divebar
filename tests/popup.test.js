@@ -167,6 +167,28 @@ describe("createPopup", () => {
     expect(popup.isOpen()).toBe(false);
   });
 
+  it("onClose fires however the popup closes", () => {
+    const invoke = fakeInvoke();
+    const onClose = vi.fn();
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    const popup = createPopup({
+      anchor: makeAnchor(),
+      invoke,
+      className: "dtest",
+      render: () => {},
+      onClose,
+    });
+
+    popup.open();
+    popup.close();
+    expect(onClose).toHaveBeenCalledOnce();
+
+    popup.open();
+    outside.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it("opening a second popup closes the first (shared shape)", () => {
     const invoke = fakeInvoke();
     const a = createPopup({

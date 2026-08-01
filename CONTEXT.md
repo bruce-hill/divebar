@@ -36,6 +36,11 @@ invent synonyms.
 - **Tooltip** — a passive panel (`src/lib/tooltip.js`): no dismissal
   logic, never owns the Coordinator slot, yields to popups. Fed by the
   standard `title` attribute, intercepted on hover.
+- **Layout editor** — the in-place edit mode on the bar
+  (`src/lib/layout-edit.js`): widget interactions are suppressed,
+  dragging reorders live, ✕ badges remove, and a toolbar popup under the
+  bar adds widgets / exits. Entered from the right-click popup or the
+  settings window (via the `divebar://edit-layout` frontend event).
 - **Anchor** — the bar element a panel is centered under.
 - **Channel** — a named backend → frontend event stream (`hlwm`, `tray`,
   `weather`, `media`, `stats`), emitted as `divebar://<name>` events via

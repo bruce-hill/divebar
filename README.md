@@ -48,11 +48,14 @@ accent color, and font.
 ## Configuration
 
 Config lives in `~/.local/config/divebar/config.json` (created with
-defaults on first run; hand-editable). The settings window — gear icon or
-right-click anywhere on the bar — is a single drag-to-reorder list of the
-bar's widgets (the bar is one flex row; every widget sizes to its content,
-and window-title flex-grows). Add/remove widgets and edit per-widget
-options; every change saves and applies to the bar instantly.
+defaults on first run; hand-editable). Layout is edited on the bar
+itself: pick "Edit bar layout…" from any widget's right-click popup (or
+the settings window) to drag widgets around in place, remove them with
+their ✕ badges, and add new ones from the toolbar that drops down under
+the bar (the bar is one flex row; every widget sizes to its content, and
+window-title flex-grows). Right-click a widget to edit its options
+inline; the settings window — gear icon or right-click — holds the
+bar-level settings. Every change saves and applies to the bar instantly.
 
 ## Running
 
@@ -124,9 +127,9 @@ export default {
 ```
 
 To add a widget: drop the file in `src/widgets/`, list it in
-`src/widgets/index.js` (the manifest the settings UI reads), and add it to
-a zone via the settings window or the config file. `ctx.options` arrives
-pre-merged with the schema's defaults.
+`src/widgets/index.js` (the manifest the add-widget picker reads), and
+put it on the bar via the layout editor or the config file. `ctx.options`
+arrives pre-merged with the schema's defaults.
 
 System data flows one way, over two event channels:
 
