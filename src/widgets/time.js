@@ -22,7 +22,7 @@ export default {
   name: "time",
   css: `
     .widget-time .text {
-      text-align: right;
+      text-align: center;
       font-family: var(--font-mono);
       font-weight: 600;
       font-variant-numeric: tabular-nums;

@@ -11,7 +11,7 @@ export default {
   name: "date",
   css: `
     .widget-date .text {
-      text-align: left;
+      text-align: center;
       font-family: var(--font-mono);
       font-weight: 600;
       font-variant-numeric: tabular-nums;
