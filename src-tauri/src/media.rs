@@ -10,10 +10,9 @@ use futures_util::StreamExt;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use zbus::{zvariant, Connection, MatchRule, MessageStream, Proxy};
 
-static LATEST: Mutex<Option<Value>> = Mutex::new(None);
 static ACTIVE_PLAYER: Mutex<Option<String>> = Mutex::new(None);
 static CONN: OnceLock<Connection> = OnceLock::new();
 static ART_CACHE: Mutex<Option<HashMap<String, Option<String>>>> = Mutex::new(None);
@@ -21,10 +20,6 @@ static ART_CACHE: Mutex<Option<HashMap<String, Option<String>>>> = Mutex::new(No
 const MPRIS_PREFIX: &str = "org.mpris.MediaPlayer2.";
 const MPRIS_PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER_IFACE: &str = "org.mpris.MediaPlayer2.Player";
-
-pub fn latest_state() -> Value {
-    LATEST.lock().unwrap().clone().unwrap_or(Value::Null)
-}
 
 pub fn spawn_media(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -107,8 +102,7 @@ async fn run(app: AppHandle) -> zbus::Result<()> {
 
 async fn refresh(app: &AppHandle, conn: &Connection) {
     let payload = gather(conn).await;
-    *LATEST.lock().unwrap() = Some(payload.clone());
-    let _ = app.emit("divebar://media", payload);
+    crate::events::emit(app, "media", payload);
 }
 
 async fn gather(conn: &Connection) -> Value {

@@ -169,11 +169,11 @@ invoke("get_config")
     await renderBar(config);
     // Initial backend emits happen before this page loads and are lost;
     // pull the cached states so widgets aren't blank until the next real
-    // event. Skipped if a live event already arrived.
-    dispatch("divebar://hlwm", await invoke("get_hlwm_state"), true);
-    dispatch("divebar://tray", await invoke("get_tray_state"), true);
-    dispatch("divebar://weather", await invoke("get_weather_state"), true);
-    dispatch("divebar://media", await invoke("get_media_state"), true);
+    // event. Per channel, skipped if a live event already arrived.
+    const states = await invoke("get_latest_states");
+    for (const [channel, payload] of Object.entries(states)) {
+      dispatch(`divebar://${channel}`, payload, true);
+    }
   })
   .catch((err) => console.error("divebar: startup failed", err));
 

@@ -12,14 +12,9 @@ use system_tray::client::{ActivateRequest, Client};
 use system_tray::data::BaseMap;
 use system_tray::item::StatusNotifierItem;
 use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
-static LATEST: Mutex<Option<Value>> = Mutex::new(None);
-
-pub fn latest_state() -> Value {
-    LATEST.lock().unwrap().clone().unwrap_or(Value::Null)
-}
 
 pub fn spawn_tray_host(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -71,8 +66,7 @@ pub async fn menu_click(address: String, menu_path: String, id: i32) -> Result<(
 
 fn emit(app: &AppHandle, items: &std::sync::Arc<Mutex<BaseMap>>) {
     let payload = build_payload(items);
-    *LATEST.lock().unwrap() = Some(payload.clone());
-    let _ = app.emit("divebar://tray", payload);
+    crate::events::emit(app, "tray", payload);
 }
 
 fn build_payload(items: &std::sync::Arc<Mutex<BaseMap>>) -> Value {

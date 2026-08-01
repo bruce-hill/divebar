@@ -5,18 +5,8 @@
 use serde_json::{json, Value};
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
-
-/// Latest emitted state, so the frontend can catch up after it loads —
-/// the initial emit happens before the webview subscribes and would
-/// otherwise be lost until the next WM event.
-static LATEST: Mutex<Option<Value>> = Mutex::new(None);
-
-pub fn latest_state() -> Value {
-    LATEST.lock().unwrap().clone().unwrap_or(Value::Null)
-}
+use tauri::AppHandle;
 
 pub fn spawn_hlwm_watcher(app: AppHandle) {
     std::thread::spawn(move || {
@@ -69,8 +59,7 @@ fn emit_state(app: &AppHandle, icons: &mut crate::xicon::IconFetcher) {
         "windowClass": class,
         "windowIcon": icon,
     });
-    *LATEST.lock().unwrap() = Some(payload.clone());
-    let _ = app.emit("divebar://hlwm", payload);
+    crate::events::emit(app, "hlwm", payload);
 }
 
 fn parse_winid(s: &str) -> Option<u32> {

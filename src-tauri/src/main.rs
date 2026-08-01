@@ -2,6 +2,7 @@
 
 mod commands;
 mod config;
+mod events;
 mod hlwm;
 mod media;
 mod readers;
@@ -143,10 +144,7 @@ fn main() {
             commands::set_brightness,
             commands::set_popup_open,
             commands::get_env,
-            commands::get_hlwm_state,
-            commands::get_tray_state,
-            commands::get_weather_state,
-            commands::get_media_state,
+            commands::get_latest_states,
             commands::media_control,
             commands::tray_activate,
             commands::tray_menu_click,

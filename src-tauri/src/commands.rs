@@ -134,23 +134,11 @@ pub async fn get_env(
     Ok(serde_json::json!({ "composited": composited }))
 }
 
-/// Latest hlwm state for late subscribers (the initial event fires before
-/// the frontend loads).
+/// Latest payload of every event channel, keyed by channel name — replayed
+/// by the frontend at startup (the initial emits fire before it loads).
 #[tauri::command]
-pub async fn get_hlwm_state() -> Result<Value, String> {
-    Ok(crate::hlwm::latest_state())
-}
-
-/// Latest weather state for late subscribers.
-#[tauri::command]
-pub async fn get_weather_state() -> Result<Value, String> {
-    Ok(crate::weather::latest_state())
-}
-
-/// Latest media state for late subscribers.
-#[tauri::command]
-pub async fn get_media_state() -> Result<Value, String> {
-    Ok(crate::media::latest_state())
+pub async fn get_latest_states() -> Result<Value, String> {
+    Ok(crate::events::latest_states())
 }
 
 /// Sends a playback command ("playPause" | "next" | "previous") to the
@@ -158,12 +146,6 @@ pub async fn get_media_state() -> Result<Value, String> {
 #[tauri::command]
 pub async fn media_control(action: String) -> Result<(), String> {
     crate::media::control(&action).await
-}
-
-/// Latest tray state for late subscribers.
-#[tauri::command]
-pub async fn get_tray_state() -> Result<Value, String> {
-    Ok(crate::tray::latest_state())
 }
 
 /// Forwards a click on a tray icon to the owning application.

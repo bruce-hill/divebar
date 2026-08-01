@@ -3,29 +3,21 @@
 //! 15 minutes, emitted as `divebar://weather` events, and re-fetched when
 //! the config changes location.
 
+use crate::events::Trigger;
 use serde_json::{json, Value};
-use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
-use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 const FETCH_INTERVAL: Duration = Duration::from_secs(15 * 60);
 const RETRY_INTERVAL: Duration = Duration::from_secs(60);
 
-static LATEST: Mutex<Option<Value>> = Mutex::new(None);
-static TRIGGER: OnceLock<Sender<()>> = OnceLock::new();
-
-pub fn latest_state() -> Value {
-    LATEST.lock().unwrap().clone().unwrap_or(Value::Null)
-}
+static REFRESH: Trigger = Trigger::new();
 
 /// Wakes the weather thread (e.g. after a config save, in case the
 /// location option changed). It only refetches if the location actually
 /// differs or the data is stale.
 pub fn request_refresh() {
-    if let Some(tx) = TRIGGER.get() {
-        let _ = tx.send(());
-    }
+    REFRESH.notify();
 }
 
 /// The `location` option of the first weather widget in the config.
@@ -45,8 +37,7 @@ fn configured_location() -> String {
 }
 
 pub fn spawn_weather(app: AppHandle) {
-    let (tx, rx) = channel();
-    let _ = TRIGGER.set(tx);
+    let rx = REFRESH.subscribe();
 
     std::thread::spawn(move || {
         let mut last_location: Option<String> = None;
@@ -66,16 +57,11 @@ pub fn spawn_weather(app: AppHandle) {
                 last_fetch = Some(Instant::now());
                 last_location = Some(location);
                 if last_ok {
-                    *LATEST.lock().unwrap() = Some(payload.clone());
-                    let _ = app.emit("divebar://weather", payload);
+                    crate::events::emit(&app, "weather", payload);
                 }
             }
-            match rx.recv_timeout(RETRY_INTERVAL) {
-                Ok(()) => {
-                    while rx.try_recv().is_ok() {}
-                }
-                Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => break,
+            if !rx.wait(RETRY_INTERVAL, Duration::ZERO) {
+                break;
             }
         }
     });

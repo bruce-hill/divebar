@@ -7,32 +7,31 @@
 //! events (pactl) and udev backlight/power events so volume, brightness,
 //! and charger changes show up immediately instead of on the next tick.
 
+use crate::events::Trigger;
 use serde_json::json;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
-use std::sync::mpsc::{channel, RecvTimeoutError, Sender};
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
 /// Don't recompute CPU usage more often than this — sysinfo needs a gap
 /// between refreshes to produce meaningful numbers.
 const CPU_MIN_INTERVAL: Duration = Duration::from_millis(900);
+/// Post-trigger settle time, so a burst of change events (e.g. holding a
+/// volume key) coalesces into one refresh.
+const SETTLE: Duration = Duration::from_millis(30);
 
-static TRIGGER: OnceLock<Sender<()>> = OnceLock::new();
+static REFRESH: Trigger = Trigger::new();
 
 /// Asks the stats thread to refresh and emit immediately.
 pub fn request_refresh() {
-    if let Some(tx) = TRIGGER.get() {
-        let _ = tx.send(());
-    }
+    REFRESH.notify();
 }
 
 pub fn spawn_stats_emitter(app: AppHandle) {
-    let (tx, rx) = channel();
-    let _ = TRIGGER.set(tx);
+    let rx = REFRESH.subscribe();
     spawn_change_watchers();
 
     std::thread::spawn(move || {
@@ -61,19 +60,12 @@ pub fn spawn_stats_emitter(app: AppHandle) {
                 "wifi": crate::readers::read_wifi(),
             });
 
-            if app.emit("divebar://stats", payload).is_err() {
+            if !crate::events::emit(&app, "stats", payload) {
                 break; // app is shutting down
             }
 
-            match rx.recv_timeout(REFRESH_INTERVAL) {
-                Ok(()) => {
-                    // Coalesce bursts (e.g. holding a volume key) into one
-                    // refresh per ~30ms.
-                    std::thread::sleep(Duration::from_millis(30));
-                    while rx.try_recv().is_ok() {}
-                }
-                Err(RecvTimeoutError::Timeout) => {}
-                Err(RecvTimeoutError::Disconnected) => break,
+            if !rx.wait(REFRESH_INTERVAL, SETTLE) {
+                break;
             }
         }
     });
