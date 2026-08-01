@@ -1,6 +1,7 @@
 // Battery widget: SVG battery whose fill width tracks the exact charge
-// percent; a bolt overlay appears while charging. Hides itself entirely on
-// machines with no battery (stats.battery is null).
+// percent; while charging the outline goes accent-colored and a shimmer
+// sweeps the fill. Hides itself entirely on machines with no battery
+// (stats.battery is null).
 
 // Interior fill geometry: the body rect is x=1.5..34.5, the fill inset to
 // x=3.7..32.3, so full charge is 28.6 units wide.
@@ -69,16 +70,12 @@ export default {
             <rect class="shimmer" x="-10" y="7.2" width="9" height="9.6"
                   fill="url(#divebar-bat-shine)" stroke="none"/>
           </g>
-          <path class="bolt" d="M20.5 6 L14 13.4 h4.2 l-2.2 4.6 6.5-7.4 h-4.2 z"
-                fill="var(--bar-bg)" stroke="currentColor" stroke-width="1"
-                stroke-linejoin="round" style="display: none"/>
         </svg>
       </span>
       <span class="value">--%</span>
     `;
     const fillEl = el.querySelector(".fill");
     const clipEl = el.querySelector(".clip");
-    const boltEl = el.querySelector(".bolt");
     const valueEl = el.querySelector(".value");
 
     const unsubscribe = onStats((stats) => {
@@ -99,7 +96,6 @@ export default {
       // Continuous green (100%) → yellow (50%) → red (0%) via HSL hue,
       // kept low-saturation so the chip doesn't pull the eye.
       fillEl.setAttribute("fill", `hsl(${1.2 * battery.percent}, 30%, 55%)`);
-      boltEl.style.display = battery.charging ? "" : "none";
       el.classList.toggle("charging", battery.charging);
       el.classList.toggle(
         "low",

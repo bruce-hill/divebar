@@ -122,9 +122,13 @@ pub fn read_battery() -> Value {
             .map(|s| s.trim().to_string())
             .unwrap_or_default();
         if let Some(percent) = capacity {
+            // "charging" really means "on AC": "Not charging" is the
+            // kernel's plugged-in-but-holding state (charge threshold
+            // reached, or firmware pausing at full).
+            let plugged = matches!(status.as_str(), "Charging" | "Full" | "Not charging");
             return json!({
                 "percent": percent,
-                "charging": status == "Charging" || status == "Full",
+                "charging": plugged,
                 "timeRemainingMinutes": battery_time_remaining(&path, &status),
             });
         }
