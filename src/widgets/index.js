@@ -14,9 +14,5 @@ export default [
   "tray",
   "weather",
   "media",
-  "cpu",
-  "memory",
-  "logo",
   "spacer",
-  "settings",
 ];

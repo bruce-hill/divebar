@@ -158,74 +158,6 @@ fn link_to_percent(link: f64) -> u32 {
     ((link / 70.0 * 100.0).round() as u32).min(100)
 }
 
-/// Cumulative CPU tick counters from the first line of /proc/stat.
-/// Usage is the ratio of busy to total ticks between two samples.
-#[derive(Clone, Copy)]
-pub struct CpuTimes {
-    idle: u64,
-    total: u64,
-}
-
-pub fn read_cpu_times() -> Option<CpuTimes> {
-    parse_cpu_times(&std::fs::read_to_string("/proc/stat").ok()?)
-}
-
-/// First line is "cpu  user nice system idle iowait irq softirq steal ...";
-/// idle time is idle + iowait.
-fn parse_cpu_times(contents: &str) -> Option<CpuTimes> {
-    let line = contents.lines().next()?.strip_prefix("cpu ")?;
-    let ticks: Vec<u64> = line
-        .split_whitespace()
-        .filter_map(|tok| tok.parse().ok())
-        .collect();
-    if ticks.len() < 5 {
-        return None;
-    }
-    Some(CpuTimes {
-        idle: ticks[3] + ticks[4],
-        total: ticks.iter().sum(),
-    })
-}
-
-/// Overall CPU usage percent between two samples, or None if no time has
-/// passed (the counters haven't moved).
-pub fn cpu_usage_percent(prev: CpuTimes, curr: CpuTimes) -> Option<f32> {
-    let total = curr.total.saturating_sub(prev.total);
-    if total == 0 {
-        return None;
-    }
-    let idle = curr.idle.saturating_sub(prev.idle);
-    Some((100.0 * (1.0 - idle as f64 / total as f64)).clamp(0.0, 100.0) as f32)
-}
-
-pub fn read_memory() -> Value {
-    match std::fs::read_to_string("/proc/meminfo") {
-        Ok(contents) => parse_meminfo(&contents),
-        Err(_) => Value::Null,
-    }
-}
-
-/// "Used" is MemTotal - MemAvailable: the kernel's estimate of what's
-/// actually claimed, not counting reclaimable caches. Values are in kB.
-fn parse_meminfo(contents: &str) -> Value {
-    let field = |name: &str| -> Option<u64> {
-        contents
-            .lines()
-            .find(|line| line.starts_with(name))?
-            .split_whitespace()
-            .nth(1)?
-            .parse()
-            .ok()
-    };
-    let (Some(total), Some(available)) = (field("MemTotal:"), field("MemAvailable:")) else {
-        return Value::Null;
-    };
-    json!({
-        "usedBytes": total.saturating_sub(available) * 1024,
-        "totalBytes": total * 1024,
-    })
-}
-
 /// Reads the first battery found under /sys/class/power_supply.
 /// Returns null on desktop machines with no battery.
 pub fn read_battery() -> Value {
@@ -359,41 +291,6 @@ mod tests {
     #[test]
     fn wireless_no_data_line_is_none() {
         assert_eq!(parse_wireless_link("header\nheader\n"), None);
-    }
-
-    #[test]
-    fn cpu_usage_from_proc_stat_delta() {
-        let prev = parse_cpu_times("cpu  100 0 100 700 100 0 0 0 0 0\n").unwrap();
-        // +100 busy, +100 idle out of +200 total → 50%.
-        let curr = parse_cpu_times("cpu  150 0 150 780 120 0 0 0 0 0\n").unwrap();
-        assert_eq!(cpu_usage_percent(prev, curr), Some(50.0));
-        // No ticks elapsed → None, so the caller keeps the last value.
-        assert_eq!(cpu_usage_percent(prev, prev), None);
-    }
-
-    #[test]
-    fn cpu_times_garbage_is_none() {
-        assert!(parse_cpu_times("intr 12345\n").is_none());
-        assert!(parse_cpu_times("cpu  1 2\n").is_none());
-    }
-
-    #[test]
-    fn meminfo_used_is_total_minus_available() {
-        let contents = "MemTotal:       16384000 kB\n\
-                        MemFree:         1000000 kB\n\
-                        MemAvailable:   12288000 kB\n";
-        assert_eq!(
-            parse_meminfo(contents),
-            json!({
-                "usedBytes": 4096000u64 * 1024,
-                "totalBytes": 16384000u64 * 1024,
-            })
-        );
-    }
-
-    #[test]
-    fn meminfo_missing_fields_is_null() {
-        assert_eq!(parse_meminfo("MemTotal: 100 kB\n"), Value::Null);
     }
 
     #[test]

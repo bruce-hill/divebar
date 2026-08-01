@@ -33,13 +33,12 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
   supported
 - **date** — "Fri Jul 31" (fixed width; optional year)
 - **time** — "2:27pm" (fixed width; optional 24-hour / seconds)
-- **settings** — gear that opens the settings window
 
-Also available but not in the default config: **logo**, **cpu**, **memory**,
-**spacer** (invisible, configurable flex-grow — for pushing widget groups
-apart), **weather** (wttr.in, no API key; icon + temp, details in tooltip,
-IP-based location unless configured), **media** (MPRIS: album art +
-track, click play/pause, middle-click next).
+Also available but not in the default config: **spacer** (invisible,
+configurable flex-grow — for pushing widget groups apart), **weather**
+(wttr.in, no API key; icon + temp, details in tooltip, IP-based location
+unless configured), **media** (MPRIS: album art + track, click
+play/pause, middle-click next).
 
 The date widget's click opens a month calendar; tooltips are custom
 styled panels; the Bar section of settings includes height, padding,
@@ -133,8 +132,8 @@ arrives pre-merged with the schema's defaults.
 
 System data flows one way, over two event channels:
 
-- `divebar://stats` — `stats.rs` polls CPU, memory, battery, volume,
-  brightness, and wifi every 2s. To expose a new stat, extend the payload
+- `divebar://stats` — `stats.rs` polls battery, volume, brightness, and
+  wifi every 2s. To expose a new stat, extend the payload
   (add a reader in `readers.rs` if a command also needs it).
 - `divebar://hlwm` — pushed immediately on every WM event (tag switches,
   focus/title changes) via a persistent `herbstclient --idle` process.

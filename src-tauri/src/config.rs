@@ -30,7 +30,6 @@ pub fn default_config() -> Value {
             { "widget": "tray", "options": {} },
             { "widget": "date", "options": {} },
             { "widget": "time", "options": {} },
-            { "widget": "settings", "options": {} },
         ]
     })
 }

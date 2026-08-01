@@ -63,9 +63,9 @@ function pointer(type, target, clientX = 0) {
 }
 
 const entries = () => [
-  { widget: "logo", options: {} },
+  { widget: "date", options: {} },
   { widget: "time", options: { seconds: true } },
-  { widget: "settings", options: {} },
+  { widget: "wifi", options: {} },
 ];
 
 let editor;
@@ -146,19 +146,19 @@ describe("createLayoutEditor", () => {
     let invoke, barEl;
     ({ editor, invoke, barEl } = makeEditor(entries()));
     editor.start();
-    const [logo, time, settings] = barEl.children;
+    const [date, time, wifi] = barEl.children;
 
-    pointer("pointerdown", settings, 250);
-    pointer("pointermove", barEl, 30); // past the 5px threshold, before logo's midpoint
-    expect([...barEl.children]).toEqual([settings, logo, time]);
-    expect(settings.classList.contains("layout-dragging")).toBe(true);
+    pointer("pointerdown", wifi, 250);
+    pointer("pointermove", barEl, 30); // past the 5px threshold, before date's midpoint
+    expect([...barEl.children]).toEqual([wifi, date, time]);
+    expect(wifi.classList.contains("layout-dragging")).toBe(true);
 
     pointer("pointerup", barEl);
 
-    expect(settings.classList.contains("layout-dragging")).toBe(false);
+    expect(wifi.classList.contains("layout-dragging")).toBe(false);
     expect(invoke.savedWidgets().at(-1).map((e) => e.widget)).toEqual([
-      "settings",
-      "logo",
+      "wifi",
+      "date",
       "time",
     ]);
   });
@@ -207,11 +207,11 @@ describe("createLayoutEditor", () => {
     const items = [...document.querySelectorAll(".layout-add-menu button")];
     expect(items.map((b) => b.textContent)).toEqual([...WIDGET_NAMES].sort());
 
-    items.find((b) => b.textContent === "cpu").click();
+    items.find((b) => b.textContent === "weather").click();
 
     const saved = invoke.savedWidgets().at(-1);
-    expect(saved.map((e) => e.widget)).toEqual(["logo", "time", "settings", "cpu"]);
-    expect(saved.at(-1)).toEqual({ widget: "cpu", options: {} });
+    expect(saved.map((e) => e.widget)).toEqual(["date", "time", "wifi", "weather"]);
+    expect(saved.at(-1)).toEqual({ widget: "weather", options: {} });
     expect(document.querySelector(".layout-add-menu").childElementCount).toBe(0);
   });
 
@@ -223,7 +223,7 @@ describe("createLayoutEditor", () => {
     const added = document.createElement("div");
     stubRect(added, 300, 90);
     barEl.appendChild(added);
-    els.set(added, { widget: "cpu", options: {} });
+    els.set(added, { widget: "weather", options: {} });
     editor.refresh();
     editor.refresh();
 
