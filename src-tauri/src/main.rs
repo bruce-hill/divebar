@@ -146,6 +146,7 @@ fn main() {
             commands::set_volume,
             commands::toggle_mute,
             commands::set_brightness,
+            commands::display_off,
             commands::set_popup_open,
             commands::get_env,
             commands::get_latest_states,

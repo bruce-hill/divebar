@@ -36,6 +36,14 @@ pub async fn set_brightness(percent: u32) -> Result<Value, String> {
     Ok(readers::read_brightness())
 }
 
+/// Puts the display to sleep via DPMS; any input wakes it back up.
+#[tauri::command]
+pub async fn display_off() -> Result<(), String> {
+    readers::run("xset", &["dpms", "force", "off"])
+        .map(|_| ())
+        .ok_or_else(|| "xset dpms force off failed".to_string())
+}
+
 /// The open popup's bounding box in frontend CSS pixels.
 #[derive(serde::Deserialize)]
 pub struct PopupRect {

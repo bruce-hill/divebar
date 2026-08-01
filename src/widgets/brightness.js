@@ -24,6 +24,33 @@ const CY = 11.4;
 const RAY_START = (3 * Math.PI) / 4; // 135° = bottom-left
 const RAY_SWEEP = (3 * Math.PI) / 2;
 
+// Fills `root` with the lightbulb SVG and returns its ray elements,
+// ordered along the sweep, endpoints included (screen coords: +angle is
+// clockwise).
+function buildBulb(root) {
+  root.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.6" stroke-linecap="round">
+      <circle class="glass" cx="${CX}" cy="${CY}" r="4.2"
+              fill="currentColor" stroke="none"/>
+      <path class="screw" d="M10.3 16.7 H13.7 M10.8 18.2 H13.2"
+            stroke-width="1.3"/>
+      <g class="rays"></g>
+    </svg>
+  `;
+  const raysEl = root.querySelector(".rays");
+  return Array.from({ length: RAY_COUNT }, (_, i) => {
+    const angle = RAY_START + (i / (RAY_COUNT - 1)) * RAY_SWEEP;
+    const ray = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    ray.setAttribute("x1", (CX + RAY_INNER * Math.cos(angle)).toFixed(2));
+    ray.setAttribute("y1", (CY + RAY_INNER * Math.sin(angle)).toFixed(2));
+    ray.setAttribute("x2", (CX + RAY_OUTER * Math.cos(angle)).toFixed(2));
+    ray.setAttribute("y2", (CY + RAY_OUTER * Math.sin(angle)).toFixed(2));
+    raysEl.appendChild(ray);
+    return ray;
+  });
+}
+
 export default {
   name: "brightness",
   css: `
@@ -36,35 +63,15 @@ export default {
     el.className = "chip clickable widget-brightness";
     el.classList.toggle("compact", !options.showPercent);
     el.innerHTML = `
-      <span class="icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.6" stroke-linecap="round">
-          <circle class="glass" cx="${CX}" cy="${CY}" r="4.2"
-                  fill="currentColor" stroke="none"/>
-          <path class="screw" d="M10.3 16.7 H13.7 M10.8 18.2 H13.2"
-                stroke-width="1.3"/>
-          <g class="rays"></g>
-        </svg>
-      </span>
+      <span class="icon"></span>
       <span class="value">--%</span>
     `;
-    const raysEl = el.querySelector(".rays");
+    const rays = buildBulb(el.querySelector(".icon"));
     const peek = makePeek(el);
     const valueEl = el.querySelector(".value");
+    let leadRays = null;
+    let leadBtn = null;
     let lastPercent = null;
-
-    // Rays ordered along the sweep, endpoints included (screen coords:
-    // +angle is clockwise).
-    const rays = Array.from({ length: RAY_COUNT }, (_, i) => {
-      const angle = RAY_START + (i / (RAY_COUNT - 1)) * RAY_SWEEP;
-      const ray = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      ray.setAttribute("x1", (CX + RAY_INNER * Math.cos(angle)).toFixed(2));
-      ray.setAttribute("y1", (CY + RAY_INNER * Math.sin(angle)).toFixed(2));
-      ray.setAttribute("x2", (CX + RAY_OUTER * Math.cos(angle)).toFixed(2));
-      ray.setAttribute("y2", (CY + RAY_OUTER * Math.sin(angle)).toFixed(2));
-      raysEl.appendChild(ray);
-      return ray;
-    });
 
     function render(brightness) {
       el.style.display = brightness ? "" : "none";
@@ -78,6 +85,7 @@ export default {
       popup.setValue(brightness.percent);
       // Radial fill: the level sweeps clockwise through the rays.
       segmentFill(rays, brightness.percent, 0.3);
+      if (leadBtn?.isConnected) segmentFill(leadRays, brightness.percent, 0.3);
     }
 
     const popup = createSliderPopup({
@@ -89,6 +97,21 @@ export default {
         } catch (err) {
           console.error("divebar: set_brightness failed", err);
         }
+      },
+      createLeading: () => {
+        leadBtn = document.createElement("button");
+        leadBtn.title = "Put display to sleep";
+        leadRays = buildBulb(leadBtn);
+        if (lastPercent !== null) segmentFill(leadRays, lastPercent, 0.3);
+        leadBtn.addEventListener("click", async () => {
+          popup.close();
+          try {
+            await invoke("display_off");
+          } catch (err) {
+            console.error("divebar: display_off failed", err);
+          }
+        });
+        return leadBtn;
       },
     });
 
