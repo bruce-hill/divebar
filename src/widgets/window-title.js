@@ -32,25 +32,26 @@ export default {
     .widget-window-title .app-badge {
       display: none;
       align-items: center;
-      gap: 0.4em;
+      gap: 0.5em;
+      height: var(--chip-height);
       font-size: calc(var(--bar-font) * 0.72);
       font-weight: 600;
       letter-spacing: 0.02em;
-      padding: 0.2em 0.7em 0.2em 0.45em;
-      border-radius: 1em;
+      padding: 0 calc(var(--chip-height) * 0.3) 0 calc(var(--chip-height) * 0.18);
+      border-radius: var(--chip-radius);
       white-space: nowrap;
       background: var(--chip-bg);
       color: var(--bar-fg-dim);
     }
     .widget-window-title .app-badge .app-icon {
       display: none;
-      width: 1.35em;
-      height: 1.35em;
-      border-radius: 3px;
+      width: calc(var(--chip-height) * 0.62);
+      height: calc(var(--chip-height) * 0.62);
+      border-radius: 4px;
     }
     /* No icon → even side padding */
     .widget-window-title .app-badge.no-icon {
-      padding-left: 0.7em;
+      padding-left: calc(var(--chip-height) * 0.3);
     }
     .widget-window-title .title-text {
       flex: 1;
