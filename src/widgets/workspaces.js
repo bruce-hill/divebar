@@ -12,7 +12,10 @@ export default {
       height: var(--chip-height);
       padding: 0 3px;
       border-radius: var(--chip-radius);
-      background: var(--chip-bg);
+      background: rgba(0, 0, 0, 0.26);
+      box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.35),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.04);
     }
     /* Accent pill that glides between tags instead of teleporting. */
     .widget-workspaces .tag-indicator {
