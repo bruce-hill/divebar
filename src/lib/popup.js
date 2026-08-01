@@ -52,6 +52,7 @@ export function createPopup({
   }
 
   let el = null;
+  let sizeObserver = null;
 
   // Close when the pointer wanders away from both the popup and its anchor.
   // This is the main close path without a compositor, where clicks outside
@@ -91,11 +92,23 @@ export function createPopup({
     anchor.addEventListener("pointerleave", arm);
 
     sendShape(invoke, el);
+
+    // Content that arrives after open (async status lines, font lists,
+    // expanding submenus) resizes the popup; keep its position and the
+    // backend window shape in sync or the new extent renders clipped.
+    const opened = el;
+    sizeObserver = new ResizeObserver(() => {
+      if (anchor.isConnected) centerUnder(opened, anchor);
+      sendShape(invoke, opened);
+    });
+    sizeObserver.observe(el);
   }
 
   function close() {
     if (!el) return;
     disarm();
+    sizeObserver?.disconnect();
+    sizeObserver = null;
     document.removeEventListener("pointerdown", onDocDown, true);
     anchor.removeEventListener("pointerenter", disarm);
     anchor.removeEventListener("pointerleave", arm);

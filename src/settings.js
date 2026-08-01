@@ -5,6 +5,7 @@
 
 import WIDGET_NAMES from "./widgets/index.js";
 import { BAR_SETTINGS } from "./lib/bar-config.js";
+import { createSettingInput } from "./lib/setting-inputs.js";
 
 const modules = {};
 let state = { widgets: [] };
@@ -67,149 +68,18 @@ function endDrag() {
 
 // --- Widget rows -----------------------------------------------------------
 
-// Installed font families, fetched once and shared by all font pickers.
-let fontsPromise = null;
-function loadFonts() {
-  fontsPromise ??= invoke("list_fonts").catch((err) => {
-    console.error("divebar settings: list_fonts failed", err);
-    return null;
-  });
-  return fontsPromise;
-}
-
 function settingInput(schema, entry) {
-  const current = entry.options?.[schema.key] ?? schema.default;
-  let input;
-  if (schema.type === "boolean") {
-    input = el("input");
-    input.type = "checkbox";
-    input.checked = Boolean(current);
-    input.addEventListener("change", () => {
-      (entry.options ??= {})[schema.key] = input.checked;
-      scheduleSave();
-    });
-  } else if (schema.type === "select") {
-    input = el("select");
-    for (const choice of schema.choices ?? []) {
-      const opt = el("option", "", choice);
-      opt.value = choice;
-      input.append(opt);
-    }
-    input.value = current;
-    input.addEventListener("change", () => {
-      (entry.options ??= {})[schema.key] = input.value;
-      scheduleSave();
-    });
-  } else if (schema.type === "font") {
-    input = el("select");
-    input.classList.add("font-select");
-    const defaultOpt = el("option", "", "(default)");
-    defaultOpt.value = "";
-    input.append(defaultOpt);
-    if (current) {
-      // Keep the saved value selectable before the font list arrives.
-      const opt = el("option", "", current);
-      opt.value = current;
-      input.append(opt);
-    }
-    input.value = current ?? "";
-    loadFonts().then((fonts) => {
-      if (!fonts || !input.isConnected) return;
-      input.replaceChildren(defaultOpt);
-      for (const family of fonts) {
-        const opt = el("option", "", family);
-        opt.value = family;
-        opt.style.fontFamily = `"${family}"`;
-        input.append(opt);
-      }
-      input.value = current ?? "";
-    });
-    input.addEventListener("change", () => {
-      (entry.options ??= {})[schema.key] = input.value;
-      input.style.fontFamily = input.value ? `"${input.value}"` : "";
-      scheduleSave();
-    });
-    if (current) input.style.fontFamily = `"${current}"`;
-  } else if (schema.type === "color") {
-    input = el("input");
-    input.type = "color";
-    input.value = current || schema.default;
-    input.addEventListener("change", () => {
-      (entry.options ??= {})[schema.key] = input.value;
-      scheduleSave();
-    });
-  } else if (schema.type === "number") {
-    input = el("input");
-    input.type = "number";
-    if (schema.min != null) input.min = schema.min;
-    if (schema.max != null) input.max = schema.max;
-    input.value = current;
-    input.addEventListener("change", () => {
-      let v = Number(input.value);
-      if (Number.isNaN(v)) v = schema.default;
-      if (schema.min != null) v = Math.max(schema.min, v);
-      if (schema.max != null) v = Math.min(schema.max, v);
-      input.value = v;
-      (entry.options ??= {})[schema.key] = v;
-      scheduleSave();
-    });
-  } else if (schema.type === "location") {
-    input = locationInput(schema, entry);
-  } else {
-    input = el("input");
-    input.type = "text";
-    input.value = current ?? "";
-    input.addEventListener("change", () => {
-      (entry.options ??= {})[schema.key] = input.value;
-      scheduleSave();
-    });
-  }
-  return input;
-}
-
-// Location field with live feedback: a status line shows the place the
-// typed value (or IP auto-detection, when empty) actually resolves to,
-// so a bad geocode ("Brooklyn" → the Bahamas) is visible immediately.
-function locationInput(schema, entry) {
-  const wrap = el("div", "loc-field");
-  const text = el("input");
-  text.type = "text";
-  text.placeholder = schema.placeholder ?? "";
-  text.value = entry.options?.[schema.key] ?? schema.default ?? "";
-  const status = el("div", "loc-status");
-
-  const save = () => {
-    (entry.options ??= {})[schema.key] = text.value;
-    scheduleSave();
-  };
-
-  let seq = 0;
-  const preview = async () => {
-    const mySeq = ++seq;
-    status.className = "loc-status";
-    status.textContent = "Looking up…";
-    try {
-      const r = await invoke("resolve_location", { location: text.value });
-      if (mySeq !== seq || !text.isConnected) return;
-      const place = [r.area, r.region, r.country].filter(Boolean).join(", ");
-      status.textContent = `${text.value.trim() ? "→" : "Auto-detected:"} ${place}`;
-    } catch (err) {
-      if (mySeq !== seq) return;
-      status.textContent = String(err);
-      status.classList.add("error");
-    }
-  };
-
-  let previewTimer = null;
-  text.addEventListener("input", () => {
-    clearTimeout(previewTimer);
-    previewTimer = setTimeout(preview, 800);
-  });
-  text.addEventListener("change", save);
-
-  wrap.append(text, status);
-  preview();
-  return wrap;
+  return createSettingInput(
+    schema,
+    entry.options?.[schema.key] ?? schema.default,
+    {
+      invoke,
+      onChange(value) {
+        (entry.options ??= {})[schema.key] = value;
+        scheduleSave();
+      },
+    },
+  );
 }
 
 function rowFor(entry, index) {

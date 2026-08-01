@@ -281,10 +281,33 @@ input[type="color"] {
 
 .font-select { max-width: 280px; }
 
+/* Custom-drawn checkbox — like the selects, the native one renders
+   nearly invisible on a dark background. */
 input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 20px;
   height: 20px;
-  accent-color: var(--accent);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2.5px solid #10121a;
+  border-bottom: 2.5px solid #10121a;
+  transform: translateY(-1px) rotate(-45deg);
 }
 
 /* --- Location field -------------------------------------------------------- */

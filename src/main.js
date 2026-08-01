@@ -15,6 +15,7 @@
 
 import { initTooltips } from "./lib/tooltip.js";
 import { applyBarStyle } from "./lib/bar-config.js";
+import { openWidgetSettings } from "./lib/widget-settings-popup.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -81,7 +82,8 @@ function defaultOptions(widget) {
   return defaults;
 }
 
-let mounted = []; // [{ key, instance }] in bar order
+let mounted = []; // [{ key, instance, widget, configIndex }] in bar order
+let currentConfig = null;
 
 async function createInstance({ widget: name, options = {} }) {
   try {
@@ -96,7 +98,7 @@ async function createInstance({ widget: name, options = {} }) {
       invoke,
       listen,
     });
-    return instance?.el ? instance : null;
+    return instance?.el ? { instance, widget } : null;
   } catch (err) {
     console.error(`divebar: failed to mount widget "${name}"`, err);
     return null;
@@ -106,21 +108,25 @@ async function createInstance({ widget: name, options = {} }) {
 // Diffs against the mounted widgets so unchanged ones keep their DOM,
 // timers, and state — config saves don't blink the whole bar.
 async function renderBar(config) {
+  currentConfig = config;
   applyBarStyle(config);
   const barEl = document.getElementById("bar");
   const old = mounted;
   const usedOld = new Set();
   const next = [];
 
-  for (const entry of config?.widgets ?? []) {
+  for (const [i, entry] of (config?.widgets ?? []).entries()) {
     const key = JSON.stringify(entry);
-    const idx = old.findIndex((m, i) => !usedOld.has(i) && m.key === key);
+    const idx = old.findIndex((m, j) => !usedOld.has(j) && m.key === key);
     if (idx >= 0) {
       usedOld.add(idx);
+      old[idx].configIndex = i;
       next.push(old[idx]);
     } else {
-      const instance = await createInstance(entry);
-      if (instance) next.push({ key, instance });
+      const created = await createInstance(entry);
+      if (created) {
+        next.push({ key, ...created, configIndex: i });
+      }
     }
   }
 
@@ -156,10 +162,39 @@ invoke("get_config")
 // Live-apply config saved from the settings window.
 listen("divebar://config", (event) => renderBar(event.payload));
 
-// Right-click anywhere on the bar opens settings.
-document.addEventListener("contextmenu", (e) => {
-  e.preventDefault();
+// Right-click a widget: its settings inline in a pop-down (plus a link
+// to the full settings window). Right-click elsewhere on the bar (or
+// inside an open popup): the settings window directly.
+const openGlobalSettings = () =>
   invoke("open_settings").catch((err) =>
     console.error("divebar: open_settings failed", err),
   );
+
+document.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  if (e.target.closest(".dpanel")) return;
+  const m = mounted.find((m) => m.instance.el.contains(e.target));
+  if (!m || !currentConfig) {
+    openGlobalSettings();
+    return;
+  }
+  openWidgetSettings({
+    anchor: m.instance.el,
+    invoke,
+    title: m.widget.name,
+    schemas: m.widget.settings ?? [],
+    options: {
+      ...defaultOptions(m.widget),
+      ...currentConfig.widgets[m.configIndex]?.options,
+    },
+    onChange(key, value) {
+      const entry = currentConfig.widgets[m.configIndex];
+      if (!entry) return;
+      (entry.options ??= {})[key] = value;
+      invoke("save_config", { config: currentConfig }).catch((err) =>
+        console.error("divebar: save_config failed", err),
+      );
+    },
+    onOpenGlobal: openGlobalSettings,
+  });
 });
