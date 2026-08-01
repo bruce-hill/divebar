@@ -1,5 +1,7 @@
 // Date widget. Format: "Fri Jul 31" (optionally with year). Natural width —
-// it only changes once per day.
+// it only changes once per day. Click opens a month calendar pop-down.
+
+import { createCalendarPopup } from "../lib/calendar-popup.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -20,9 +22,12 @@ export default {
   settings: [
     { key: "showYear", label: "Show year", type: "boolean", default: false },
   ],
-  create({ options }) {
+  create({ options, invoke }) {
     const el = document.createElement("div");
-    el.className = "chip widget-date";
+    el.className = "chip clickable widget-date";
+    el.style.cursor = "pointer";
+    const popup = createCalendarPopup({ anchor: el, invoke });
+    el.addEventListener("click", () => popup.toggle());
     const textEl = document.createElement("span");
     textEl.className = "text";
     el.appendChild(textEl);
@@ -34,6 +39,12 @@ export default {
     };
     render();
     const timer = setInterval(render, 1000);
-    return { el, destroy: () => clearInterval(timer) };
+    return {
+      el,
+      destroy() {
+        clearInterval(timer);
+        popup.close();
+      },
+    };
   },
 };
