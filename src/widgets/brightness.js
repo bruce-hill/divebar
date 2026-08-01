@@ -1,14 +1,13 @@
-// Screen brightness widget: SVG sun whose core radius, ray length, and ray
-// opacity all scale continuously with the brightness level. Clicking the
-// chip opens a pop-down slider. Hides itself when no backlight device
-// exists.
+// Screen brightness widget: SVG sun acting as a radial indicator — the
+// rays illuminate clockwise from the top as brightness increases (each ray
+// fades in across its share of the range). Clicking the chip opens a
+// pop-down slider. Hides itself when no backlight device exists.
 
 import { createSliderPopup } from "../lib/slider-popup.js";
 
 const RAY_COUNT = 8;
-const RAY_INNER = 6.8; // rays start here...
-const RAY_OUTER_MIN = 8.0; // ...and end between these two radii
-const RAY_OUTER_MAX = 10.8;
+const RAY_INNER = 6.8;
+const RAY_OUTER = 10.4;
 
 export default {
   name: "brightness",
@@ -66,13 +65,16 @@ export default {
       }, 2500);
     }
 
+    // Rays ordered from the top, clockwise (screen coords: +angle is CW).
     const rays = Array.from({ length: RAY_COUNT }, (_, i) => {
-      const angle = (i / RAY_COUNT) * 2 * Math.PI;
+      const angle = -Math.PI / 2 + (i / RAY_COUNT) * 2 * Math.PI;
       const ray = document.createElementNS("http://www.w3.org/2000/svg", "line");
       ray.setAttribute("x1", (12 + RAY_INNER * Math.cos(angle)).toFixed(2));
       ray.setAttribute("y1", (12 + RAY_INNER * Math.sin(angle)).toFixed(2));
+      ray.setAttribute("x2", (12 + RAY_OUTER * Math.cos(angle)).toFixed(2));
+      ray.setAttribute("y2", (12 + RAY_OUTER * Math.sin(angle)).toFixed(2));
       raysEl.appendChild(ray);
-      return { ray, angle };
+      return ray;
     });
 
     function render(brightness) {
@@ -82,17 +84,16 @@ export default {
         lastPercent !== null && brightness.percent !== lastPercent;
       lastPercent = brightness.percent;
       if (changed && !options.showPercent && options.peekOnChange) peek();
-      const t = brightness.percent / 100;
       valueEl.textContent = `${brightness.percent}%`;
       el.title = `Brightness: ${brightness.percent}%`;
       popup.setValue(brightness.percent);
-      coreEl.setAttribute("r", (3.0 + 1.4 * t).toFixed(2));
-      const outer = RAY_OUTER_MIN + (RAY_OUTER_MAX - RAY_OUTER_MIN) * t;
-      raysEl.style.opacity = 0.3 + 0.7 * t;
-      for (const { ray, angle } of rays) {
-        ray.setAttribute("x2", (12 + outer * Math.cos(angle)).toFixed(2));
-        ray.setAttribute("y2", (12 + outer * Math.sin(angle)).toFixed(2));
-      }
+      // Radial fill: each ray owns a slice of the range and fades in as
+      // the level sweeps clockwise through it.
+      const slice = 100 / RAY_COUNT;
+      rays.forEach((ray, i) => {
+        const t = Math.min(1, Math.max(0, (brightness.percent - i * slice) / slice));
+        ray.style.opacity = (0.3 + 0.7 * t).toFixed(3);
+      });
     }
 
     const popup = createSliderPopup({
