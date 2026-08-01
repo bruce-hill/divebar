@@ -98,9 +98,9 @@ function applyBarStyle(config) {
   root.setProperty("--icon-size", `${Math.round(chip * 0.88)}px`);
 }
 
-let mounted = []; // [{ el, destroy? }] of live widget instances
+let mounted = []; // [{ key, instance }] in bar order
 
-async function mountWidget(zoneEl, { widget: name, options = {} }) {
+async function createInstance({ widget: name, options = {} }) {
   try {
     const module = await import(`./widgets/${name}.js`);
     const widget = module.default;
@@ -113,31 +113,48 @@ async function mountWidget(zoneEl, { widget: name, options = {} }) {
       invoke,
       listen,
     });
-    if (instance?.el) {
-      zoneEl.appendChild(instance.el);
-      mounted.push(instance);
-    }
+    return instance?.el ? instance : null;
   } catch (err) {
     console.error(`divebar: failed to mount widget "${name}"`, err);
+    return null;
   }
 }
 
+// Diffs against the mounted widgets so unchanged ones keep their DOM,
+// timers, and state — config saves don't blink the whole bar.
 async function renderBar(config) {
   applyBarStyle(config);
-  for (const instance of mounted) {
+  const barEl = document.getElementById("bar");
+  const old = mounted;
+  const usedOld = new Set();
+  const next = [];
+
+  for (const entry of config?.widgets ?? []) {
+    const key = JSON.stringify(entry);
+    const idx = old.findIndex((m, i) => !usedOld.has(i) && m.key === key);
+    if (idx >= 0) {
+      usedOld.add(idx);
+      next.push(old[idx]);
+    } else {
+      const instance = await createInstance(entry);
+      if (instance) next.push({ key, instance });
+    }
+  }
+
+  for (let i = 0; i < old.length; i++) {
+    if (usedOld.has(i)) continue;
     try {
-      instance.destroy?.();
+      old[i].instance.destroy?.();
     } catch (err) {
       console.error("divebar: widget destroy failed", err);
     }
-    instance.el?.remove();
+    old[i].instance.el.remove();
   }
-  mounted = [];
-  const barEl = document.getElementById("bar");
-  // Mount sequentially so widget order matches the config.
-  for (const entry of config?.widgets ?? []) {
-    await mountWidget(barEl, entry);
-  }
+
+  // appendChild moves already-mounted nodes, so this both orders and
+  // inserts in one pass.
+  for (const m of next) barEl.appendChild(m.instance.el);
+  mounted = next;
 }
 
 invoke("get_config")
