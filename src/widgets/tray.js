@@ -48,6 +48,8 @@ export default {
   create({ onEvent, invoke }) {
     const el = document.createElement("div");
     el.className = "widget-tray";
+    let knownAddresses = new Set();
+    let seenFirst = false;
 
     function activate(item, e, secondary) {
       invoke("tray_activate", {
@@ -61,6 +63,9 @@ export default {
     const unsubscribe = onEvent("divebar://tray", (items) => {
       if (!Array.isArray(items)) items = [];
       el.classList.toggle("has-items", items.length > 0);
+      const isNew = (item) => seenFirst && !knownAddresses.has(item.address);
+      knownAddresses = new Set(items.map((i) => i.address));
+      seenFirst = true;
       el.replaceChildren(
         ...items.map((item) => {
           const btn = document.createElement("button");
@@ -85,6 +90,15 @@ export default {
           btn.addEventListener("auxclick", (e) => {
             if (e.button === 1) activate(item, e, true);
           });
+          if (isNew(item)) {
+            btn.animate(
+              [
+                { opacity: 0, transform: "scale(0.4)" },
+                { opacity: 1, transform: "none" },
+              ],
+              { duration: 180, easing: "cubic-bezier(0.34, 1.4, 0.64, 1)" },
+            );
+          }
           btn.addEventListener("contextmenu", (e) => {
             e.preventDefault();
             e.stopPropagation(); // don't open divebar settings

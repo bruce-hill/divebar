@@ -20,6 +20,16 @@ export default {
     }
     .widget-battery.present { display: flex; }
     .widget-battery.charging .icon { color: var(--accent); }
+    /* Highlight sweeping across the fill while charging */
+    .widget-battery .shimmer { display: none; }
+    .widget-battery.charging .shimmer {
+      display: block;
+      animation: divebar-bat-shimmer 2.2s linear infinite;
+    }
+    @keyframes divebar-bat-shimmer {
+      from { transform: translateX(0); }
+      to   { transform: translateX(52px); }
+    }
     .widget-battery.low .icon,
     .widget-battery.low .value { color: var(--critical); }
   `,
@@ -41,10 +51,24 @@ export default {
     el.innerHTML = `
       <span class="icon">
         <svg viewBox="0 0 40 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <defs>
+            <clipPath id="divebar-bat-clip">
+              <rect class="clip" x="${FILL_X}" y="7.2" width="0" height="9.6" rx="1.4"/>
+            </clipPath>
+            <linearGradient id="divebar-bat-shine" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="0.5" stop-color="#fff" stop-opacity="0.45"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
           <rect x="1.5" y="5" width="33" height="14" rx="3"/>
           <rect x="35.5" y="9" width="3" height="6" rx="1.2" fill="currentColor" stroke="none"/>
           <rect class="fill" x="${FILL_X}" y="7.2" width="0" height="9.6" rx="1.4"
                 fill="currentColor" stroke="none"/>
+          <g clip-path="url(#divebar-bat-clip)">
+            <rect class="shimmer" x="-10" y="7.2" width="9" height="9.6"
+                  fill="url(#divebar-bat-shine)" stroke="none"/>
+          </g>
           <path class="bolt" d="M20.5 6 L14 13.4 h4.2 l-2.2 4.6 6.5-7.4 h-4.2 z"
                 fill="var(--bar-bg)" stroke="currentColor" stroke-width="1"
                 stroke-linejoin="round" style="display: none"/>
@@ -53,6 +77,7 @@ export default {
       <span class="value">--%</span>
     `;
     const fillEl = el.querySelector(".fill");
+    const clipEl = el.querySelector(".clip");
     const boltEl = el.querySelector(".bolt");
     const valueEl = el.querySelector(".value");
 
@@ -62,10 +87,9 @@ export default {
       if (battery == null) return;
       valueEl.textContent = `${battery.percent}%`;
       el.title = `Battery: ${battery.percent}%${battery.charging ? " (charging)" : ""}`;
-      fillEl.setAttribute(
-        "width",
-        ((battery.percent / 100) * FILL_MAX_WIDTH).toFixed(2),
-      );
+      const fillWidth = ((battery.percent / 100) * FILL_MAX_WIDTH).toFixed(2);
+      fillEl.setAttribute("width", fillWidth);
+      clipEl.setAttribute("width", fillWidth);
       // Continuous green (100%) → yellow (50%) → red (0%) via HSL hue.
       fillEl.setAttribute("fill", `hsl(${1.2 * battery.percent}, 75%, 50%)`);
       boltEl.style.display = battery.charging ? "" : "none";

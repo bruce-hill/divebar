@@ -54,6 +54,7 @@ export default {
     const valueEl = el.querySelector(".value");
     let peekTimer = null;
     let lastPercent = null;
+    let lastShownPercent = null;
 
     // Temporarily reveal the percentage after a change, then re-collapse.
     function peek() {
@@ -84,6 +85,17 @@ export default {
         lastPercent !== null && brightness.percent !== lastPercent;
       lastPercent = brightness.percent;
       if (changed && !options.showPercent && options.peekOnChange) peek();
+      if (changed) {
+        const up = brightness.percent > lastShownPercent;
+        valueEl.animate(
+          [
+            { opacity: 0.3, transform: `translateY(${up ? 5 : -5}px)` },
+            { opacity: 1, transform: "none" },
+          ],
+          { duration: 90, easing: "ease-out" },
+        );
+      }
+      lastShownPercent = brightness.percent;
       valueEl.textContent = `${brightness.percent}%`;
       el.title = `Brightness: ${brightness.percent}%`;
       popup.setValue(brightness.percent);

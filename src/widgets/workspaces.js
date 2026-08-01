@@ -61,6 +61,11 @@ export default {
       color: #10121a;
       background: var(--critical);
       font-weight: 700;
+      animation: divebar-urgent-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes divebar-urgent-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(247, 118, 142, 0); filter: brightness(1); }
+      50%      { box-shadow: 0 0 8px 1px rgba(247, 118, 142, 0.55); filter: brightness(1.18); }
     }
   `,
   settings: [

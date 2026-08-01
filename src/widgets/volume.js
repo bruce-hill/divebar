@@ -82,6 +82,7 @@ export default {
     let peekTimer = null;
     let lastPercent = null;
     let lastMuted = null;
+    let lastShownPercent = null;
 
     // Temporarily reveal the percentage after a change, then re-collapse.
     function peek() {
@@ -102,6 +103,17 @@ export default {
       lastPercent = volume.percent;
       lastMuted = volume.muted;
       if (changed && !options.showPercent && options.peekOnChange) peek();
+      if (changed && valueEl.textContent !== `${volume.percent}%`) {
+        const up = volume.percent > (lastShownPercent ?? volume.percent);
+        valueEl.animate(
+          [
+            { opacity: 0.3, transform: `translateY(${up ? 5 : -5}px)` },
+            { opacity: 1, transform: "none" },
+          ],
+          { duration: 90, easing: "ease-out" },
+        );
+      }
+      lastShownPercent = volume.percent;
       valueEl.textContent = `${volume.percent}%`;
       el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);

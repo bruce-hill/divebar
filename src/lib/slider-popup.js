@@ -158,6 +158,13 @@ export function createSliderPopup({ anchor, invoke, onChange, createLeading }) {
     }
     popupEl.append(sliderEl, valueEl);
     document.body.appendChild(popupEl);
+    popupEl.animate(
+      [
+        { opacity: 0, transform: "translateY(-8px)" },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: 150, easing: "ease-out" },
+    );
 
     // Center under the anchor, clamped to the screen edges.
     const rect = anchor.getBoundingClientRect();
@@ -194,10 +201,18 @@ export function createSliderPopup({ anchor, invoke, onChange, createLeading }) {
     anchor.removeEventListener("pointerenter", disarmClose);
     anchor.removeEventListener("pointerleave", armClose);
     disarmClose();
-    popupEl.remove();
+    const closingEl = popupEl;
     popupEl = sliderEl = valueEl = null;
     dragging = false;
     popupDidClose(close);
+    const anim = closingEl.animate(
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: "translateY(-6px)" },
+      ],
+      { duration: 110, easing: "ease-in" },
+    );
+    anim.onfinish = () => closingEl.remove();
     invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
       console.error("divebar: set_popup_open failed", err),
     );

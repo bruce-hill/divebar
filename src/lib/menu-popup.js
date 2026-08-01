@@ -100,7 +100,14 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
     document.removeEventListener("pointerdown", onDocDown, true);
     anchor.removeEventListener("pointerenter", disarm);
     anchor.removeEventListener("pointerleave", arm);
-    el.remove();
+    const anim = el.animate(
+      [
+        { opacity: 1, transform: "none" },
+        { opacity: 0, transform: "translateY(-6px)" },
+      ],
+      { duration: 110, easing: "ease-in" },
+    );
+    anim.onfinish = () => el.remove();
     popupDidClose(close);
     invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
       console.error("divebar: set_popup_open failed", err),
@@ -163,6 +170,13 @@ export function openTrayMenu({ anchor, invoke, address, menuPath, items }) {
 
   buildItems(el, items);
   document.body.appendChild(el);
+  el.animate(
+    [
+      { opacity: 0, transform: "translateY(-8px)" },
+      { opacity: 1, transform: "none" },
+    ],
+    { duration: 150, easing: "ease-out" },
+  );
 
   // Center under the anchor, clamped to the screen edges.
   const rect = anchor.getBoundingClientRect();
