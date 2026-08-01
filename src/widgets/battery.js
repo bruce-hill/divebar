@@ -96,8 +96,9 @@ export default {
       const fillWidth = ((battery.percent / 100) * FILL_MAX_WIDTH).toFixed(2);
       fillEl.setAttribute("width", fillWidth);
       clipEl.setAttribute("width", fillWidth);
-      // Continuous green (100%) → yellow (50%) → red (0%) via HSL hue.
-      fillEl.setAttribute("fill", `hsl(${1.2 * battery.percent}, 75%, 50%)`);
+      // Continuous green (100%) → yellow (50%) → red (0%) via HSL hue,
+      // kept low-saturation so the chip doesn't pull the eye.
+      fillEl.setAttribute("fill", `hsl(${1.2 * battery.percent}, 30%, 55%)`);
       boltEl.style.display = battery.charging ? "" : "none";
       el.classList.toggle("charging", battery.charging);
       el.classList.toggle(
