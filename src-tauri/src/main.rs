@@ -158,6 +158,7 @@ fn main() {
             commands::close_settings,
             commands::list_fonts,
             commands::launch_wifi_gui,
+            commands::resolve_location,
         ])
         .run(tauri::generate_context!())
         .expect("error while running divebar");

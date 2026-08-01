@@ -153,6 +153,8 @@ function settingInput(schema, entry) {
       (entry.options ??= {})[schema.key] = v;
       scheduleSave();
     });
+  } else if (schema.type === "location") {
+    input = locationInput(schema, entry);
   } else {
     input = el("input");
     input.type = "text";
@@ -163,6 +165,51 @@ function settingInput(schema, entry) {
     });
   }
   return input;
+}
+
+// Location field with live feedback: a status line shows the place the
+// typed value (or IP auto-detection, when empty) actually resolves to,
+// so a bad geocode ("Brooklyn" → the Bahamas) is visible immediately.
+function locationInput(schema, entry) {
+  const wrap = el("div", "loc-field");
+  const text = el("input");
+  text.type = "text";
+  text.placeholder = schema.placeholder ?? "";
+  text.value = entry.options?.[schema.key] ?? schema.default ?? "";
+  const status = el("div", "loc-status");
+
+  const save = () => {
+    (entry.options ??= {})[schema.key] = text.value;
+    scheduleSave();
+  };
+
+  let seq = 0;
+  const preview = async () => {
+    const mySeq = ++seq;
+    status.className = "loc-status";
+    status.textContent = "Looking up…";
+    try {
+      const r = await invoke("resolve_location", { location: text.value });
+      if (mySeq !== seq || !text.isConnected) return;
+      const place = [r.area, r.region, r.country].filter(Boolean).join(", ");
+      status.textContent = `${text.value.trim() ? "→" : "Auto-detected:"} ${place}`;
+    } catch (err) {
+      if (mySeq !== seq) return;
+      status.textContent = String(err);
+      status.classList.add("error");
+    }
+  };
+
+  let previewTimer = null;
+  text.addEventListener("input", () => {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(preview, 800);
+  });
+  text.addEventListener("change", save);
+
+  wrap.append(text, status);
+  preview();
+  return wrap;
 }
 
 function rowFor(entry, index) {

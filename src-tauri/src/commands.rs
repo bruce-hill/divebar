@@ -275,6 +275,15 @@ pub async fn list_fonts() -> Result<Vec<String>, String> {
     Ok(families.into_iter().collect())
 }
 
+/// Resolves a weather location string (empty = IP auto-detect) to the
+/// area wttr.in will actually report on — the settings window's live
+/// location preview.
+#[tauri::command]
+pub async fn resolve_location(location: String) -> Result<Value, String> {
+    crate::weather::resolve(&location)
+        .ok_or_else(|| "couldn't resolve this location".to_string())
+}
+
 #[tauri::command]
 pub async fn close_settings(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;

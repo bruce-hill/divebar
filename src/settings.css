@@ -286,3 +286,32 @@ input[type="checkbox"] {
   height: 20px;
   accent-color: var(--accent);
 }
+
+/* --- Location field -------------------------------------------------------- */
+
+.loc-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.loc-field input {
+  font: inherit;
+  font-size: 20px;
+  color: var(--fg);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  width: 280px;
+}
+
+.loc-status {
+  color: var(--fg-dim);
+  font-size: 17px;
+  max-width: 380px;
+  text-align: right;
+}
+
+.loc-status.error { color: var(--critical); }

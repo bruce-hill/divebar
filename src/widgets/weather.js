@@ -173,8 +173,9 @@ export default {
     },
     {
       key: "location",
-      label: "Location (empty = auto)",
-      type: "text",
+      label: "Location",
+      type: "location",
+      placeholder: "city, zip, or lat,lon — empty = auto",
       default: "",
     },
   ],

@@ -5,6 +5,8 @@
 
 use crate::events::Trigger;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::AppHandle;
 
@@ -67,15 +69,70 @@ pub fn spawn_weather(app: AppHandle) {
     });
 }
 
-fn fetch(location: &str) -> Value {
-    let url = format!(
+/// Bare 5-digit entries are US zip codes; unqualified they geocode
+/// anywhere on earth (wttr.in resolves "10001" to Cáceres, Spain), so
+/// pin them to the US.
+fn normalize_location(location: &str) -> String {
+    let loc = location.trim();
+    if loc.len() == 5 && loc.bytes().all(|b| b.is_ascii_digit()) {
+        format!("{loc},USA")
+    } else {
+        loc.to_string()
+    }
+}
+
+fn wttr_url(location: &str) -> String {
+    format!(
         "https://wttr.in/{}?format=j1",
-        location.replace(' ', "+")
-    );
-    match crate::readers::fetch_url(&url, 15) {
+        normalize_location(location).replace(' ', "+")
+    )
+}
+
+fn fetch(location: &str) -> Value {
+    match crate::readers::fetch_url(&wttr_url(location), 15) {
         Some(body) => parse_wttr(&body),
         None => Value::Null,
     }
+}
+
+static RESOLVE_CACHE: Mutex<BTreeMap<String, Value>> = Mutex::new(BTreeMap::new());
+
+/// Resolves a location string to the area wttr.in will actually report
+/// on — the settings window's live preview. Non-empty resolutions are
+/// cached (places don't move, and wttr.in rate-limits); the empty
+/// string means IP auto-detect, always fetched fresh since its answer
+/// changes when the machine moves.
+pub fn resolve(location: &str) -> Option<Value> {
+    let key = normalize_location(location);
+    if !key.is_empty() {
+        if let Some(hit) = RESOLVE_CACHE.lock().unwrap().get(&key) {
+            return Some(hit.clone());
+        }
+    }
+    let body = crate::readers::fetch_url(&wttr_url(location), 15)?;
+    let area = parse_area(&body)?;
+    if !key.is_empty() {
+        RESOLVE_CACHE.lock().unwrap().insert(key, area.clone());
+    }
+    Some(area)
+}
+
+/// Extracts `nearest_area` from a wttr.in `?format=j1` body.
+fn parse_area(body: &[u8]) -> Option<Value> {
+    let data = serde_json::from_slice::<Value>(body).ok()?;
+    let a = &data["nearest_area"][0];
+    let text = |v: &Value| v[0]["value"].as_str().unwrap_or("").to_string();
+    let area = text(&a["areaName"]);
+    if area.is_empty() {
+        return None;
+    }
+    Some(json!({
+        "area": area,
+        "region": text(&a["region"]),
+        "country": text(&a["country"]),
+        "lat": a["latitude"].as_str().and_then(|s| s.parse::<f64>().ok()),
+        "lon": a["longitude"].as_str().and_then(|s| s.parse::<f64>().ok()),
+    }))
 }
 
 /// Extracts the fields the weather widget shows from a wttr.in
@@ -157,7 +214,12 @@ mod tests {
             "weatherDesc": [{ "value": "Sunny" }],
             "humidity": "40"
         }],
-        "nearest_area": [{ "areaName": [{ "value": "Oakland" }] }],
+        "nearest_area": [{
+            "areaName": [{ "value": "Oakland" }],
+            "region": [{ "value": "California" }],
+            "country": [{ "value": "United States of America" }],
+            "latitude": "37.805", "longitude": "-122.273"
+        }],
         "weather": [{
             "date": "2026-08-01",
             "mintempC": "14", "mintempF": "57",
@@ -207,6 +269,37 @@ mod tests {
                 }],
             })
         );
+    }
+
+    #[test]
+    fn bare_us_zip_gets_country_suffix() {
+        assert_eq!(normalize_location(" 10001 "), "10001,USA");
+        assert_eq!(normalize_location("10001,USA"), "10001,USA");
+        assert_eq!(normalize_location("New York"), "New York");
+        assert_eq!(normalize_location("94107x"), "94107x");
+        assert_eq!(normalize_location(""), "");
+    }
+
+    #[test]
+    fn url_encodes_spaces_and_normalizes() {
+        assert_eq!(wttr_url("New York"), "https://wttr.in/New+York?format=j1");
+        assert_eq!(wttr_url("94107"), "https://wttr.in/94107,USA?format=j1");
+    }
+
+    #[test]
+    fn parses_nearest_area() {
+        assert_eq!(
+            parse_area(SAMPLE.as_bytes()),
+            Some(json!({
+                "area": "Oakland",
+                "region": "California",
+                "country": "United States of America",
+                "lat": 37.805,
+                "lon": -122.273,
+            }))
+        );
+        assert_eq!(parse_area(b"<html>rate limited</html>"), None);
+        assert_eq!(parse_area(br#"{ "nearest_area": [] }"#), None);
     }
 
     #[test]
