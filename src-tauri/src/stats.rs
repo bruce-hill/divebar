@@ -156,8 +156,51 @@ fn read_battery() -> Value {
             return json!({
                 "percent": percent,
                 "charging": status == "Charging" || status == "Full",
+                "timeRemainingMinutes": time_remaining_minutes(&path, &status),
             });
         }
     }
     Value::Null
+}
+
+/// Estimated minutes to empty (discharging) or full (charging), from the
+/// battery's instantaneous power draw. Null when the kernel doesn't expose
+/// the numbers or the rate is ~0.
+fn time_remaining_minutes(path: &std::path::Path, status: &str) -> Value {
+    let read_num = |name: &str| -> Option<f64> {
+        std::fs::read_to_string(path.join(name))
+            .ok()?
+            .trim()
+            .parse::<f64>()
+            .ok()
+    };
+    // Either energy_* (µWh with power µW) or charge_* (µAh with current µA);
+    // the ratio works out the same either way.
+    let (now, full, rate) = if let (Some(now), Some(full), Some(rate)) = (
+        read_num("energy_now"),
+        read_num("energy_full"),
+        read_num("power_now"),
+    ) {
+        (now, full, rate)
+    } else if let (Some(now), Some(full), Some(rate)) = (
+        read_num("charge_now"),
+        read_num("charge_full"),
+        read_num("current_now"),
+    ) {
+        (now, full, rate)
+    } else {
+        return Value::Null;
+    };
+    if rate < 1.0 {
+        return Value::Null;
+    }
+    let hours = match status {
+        "Discharging" => now / rate,
+        "Charging" => (full - now).max(0.0) / rate,
+        _ => return Value::Null,
+    };
+    if !hours.is_finite() || hours > 48.0 {
+        return Value::Null;
+    }
+    json!((hours * 60.0).round() as u32)
 }

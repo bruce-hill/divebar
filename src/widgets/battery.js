@@ -86,7 +86,13 @@ export default {
       el.classList.toggle("present", battery != null);
       if (battery == null) return;
       valueEl.textContent = `${battery.percent}%`;
-      el.title = `Battery: ${battery.percent}%${battery.charging ? " (charging)" : ""}`;
+      let title = `Battery: ${battery.percent}%${battery.charging ? " (charging)" : ""}`;
+      const mins = battery.timeRemainingMinutes;
+      if (mins != null) {
+        const t = `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, "0")}m`;
+        title += battery.charging ? ` · ${t} until full` : ` · ${t} remaining`;
+      }
+      el.title = title;
       const fillWidth = ((battery.percent / 100) * FILL_MAX_WIDTH).toFixed(2);
       fillEl.setAttribute("width", fillWidth);
       clipEl.setAttribute("width", fillWidth);
