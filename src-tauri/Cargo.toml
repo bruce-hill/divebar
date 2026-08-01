@@ -27,4 +27,5 @@ gdk = "0.18"
 
 [profile.release]
 strip = true
-lto = true
+lto = false
+incremental = true
