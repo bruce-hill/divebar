@@ -11,6 +11,7 @@ use std::sync::{Mutex, OnceLock};
 use system_tray::client::{ActivateRequest, Client};
 use system_tray::data::BaseMap;
 use system_tray::item::StatusNotifierItem;
+use system_tray::menu::{MenuItem, MenuType, ToggleState, ToggleType, TrayMenu};
 use tauri::{AppHandle, Emitter};
 
 static CLIENT: OnceLock<Client> = OnceLock::new();
@@ -56,6 +57,18 @@ pub async fn activate(address: String, secondary: bool, x: i32, y: i32) -> Resul
     client.activate(request).await.map_err(|e| e.to_string())
 }
 
+pub async fn menu_click(address: String, menu_path: String, id: i32) -> Result<(), String> {
+    let client = CLIENT.get().ok_or("tray host not running")?;
+    client
+        .activate(ActivateRequest::MenuItem {
+            address,
+            menu_path,
+            submenu_id: id,
+        })
+        .await
+        .map_err(|e| e.to_string())
+}
+
 fn emit(app: &AppHandle, items: &std::sync::Arc<Mutex<BaseMap>>) {
     let payload = build_payload(items);
     *LATEST.lock().unwrap() = Some(payload.clone());
@@ -66,7 +79,7 @@ fn build_payload(items: &std::sync::Arc<Mutex<BaseMap>>) -> Value {
     let map = items.lock().unwrap();
     let mut entries: Vec<(String, Value)> = map
         .iter()
-        .map(|(address, (item, _menu))| {
+        .map(|(address, (item, menu))| {
             (
                 item.id.clone(),
                 json!({
@@ -75,6 +88,8 @@ fn build_payload(items: &std::sync::Arc<Mutex<BaseMap>>) -> Value {
                     "title": item.title,
                     "icon": icon_data_uri(item),
                     "status": format!("{:?}", item.status),
+                    "menuPath": item.menu,
+                    "menu": serialize_menu(menu.as_ref()),
                 }),
             )
         })
@@ -82,6 +97,39 @@ fn build_payload(items: &std::sync::Arc<Mutex<BaseMap>>) -> Value {
     // Sort by app id for a stable display order across updates.
     entries.sort_by(|a, b| a.0.cmp(&b.0));
     Value::Array(entries.into_iter().map(|(_, v)| v).collect())
+}
+
+fn serialize_menu(menu: Option<&TrayMenu>) -> Value {
+    match menu {
+        Some(m) => Value::Array(m.submenus.iter().filter_map(serialize_menu_item).collect()),
+        None => Value::Null,
+    }
+}
+
+fn serialize_menu_item(item: &MenuItem) -> Option<Value> {
+    if !item.visible {
+        return None;
+    }
+    if matches!(item.menu_type, MenuType::Separator) {
+        return Some(json!({ "type": "separator" }));
+    }
+    let checked = if matches!(item.toggle_type, ToggleType::CannotBeToggled) {
+        Value::Null
+    } else {
+        match item.toggle_state {
+            ToggleState::On => Value::Bool(true),
+            ToggleState::Off => Value::Bool(false),
+            ToggleState::Indeterminate => Value::Null,
+        }
+    };
+    Some(json!({
+        "type": "item",
+        "id": item.id,
+        "label": item.label,
+        "enabled": item.enabled,
+        "checked": checked,
+        "children": item.submenu.iter().filter_map(serialize_menu_item).collect::<Vec<_>>(),
+    }))
 }
 
 fn icon_data_uri(item: &StatusNotifierItem) -> Option<String> {

@@ -19,7 +19,7 @@ pub const DEFAULT_BAR_HEIGHT: f64 = 48.0;
 /// Extra transparent space below the bar (logical px) where pop-down panels
 /// (volume/brightness sliders) can render. Normally click-through via the
 /// X11 input shape; made interactive only while a popup is open.
-pub const POPUP_SPACE: f64 = 160.0;
+pub const POPUP_SPACE: f64 = 320.0;
 
 /// Window geometry in physical pixels, shared (behind a Mutex) with
 /// commands that toggle the interactive input region or resize the bar.
@@ -142,6 +142,7 @@ fn main() {
             commands::get_hlwm_state,
             commands::get_tray_state,
             commands::tray_activate,
+            commands::tray_menu_click,
             commands::get_config,
             commands::get_default_config,
             commands::save_config,

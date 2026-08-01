@@ -28,8 +28,9 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 - **brightness** — level via brightnessctl; click opens a pop-down slider
 - **battery** — charge % + charging state (auto-hides on desktops)
 - **tray** — system tray via the StatusNotifierItem D-Bus protocol (divebar
-  acts as the tray host); left click activates, middle click secondary.
-  Legacy XEmbed-only tray apps are not supported
+  acts as the tray host); left click activates, middle click secondary,
+  right click opens the item's menu. Legacy XEmbed-only tray apps are not
+  supported
 - **date** — "Fri Jul 31" (fixed width; optional year)
 - **time** — "2:27pm" (fixed width; optional 24-hour / seconds)
 - **settings** — gear that opens the settings window
@@ -149,5 +150,4 @@ it and shrinks the region back). Only the bar strip is reserved via strut.
 - **Wayland** — space reservation currently uses X11 struts; Wayland support
   would go through `gtk-layer-shell` in `linux.rs`.
 - **More widgets** — media player, notifications.
-- **Tray menus** — right-click dbusmenu rendering for tray items.
 - **Multi-monitor** — one bar per monitor.

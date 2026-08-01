@@ -4,6 +4,8 @@
 // (via the set_popup_open command), so the popup area is only interactive
 // while a popup is visible.
 
+import { popupWillOpen, popupDidClose } from "./popup-state.js";
+
 const CSS = `
   .dpopup {
     position: fixed;
@@ -60,7 +62,6 @@ const CSS = `
 const THROTTLE_MS = 80;
 
 let stylesInjected = false;
-let openPopup = null; // at most one popup open at a time
 
 export function createSliderPopup({ anchor, invoke, onChange }) {
   if (!stylesInjected) {
@@ -118,8 +119,7 @@ export function createSliderPopup({ anchor, invoke, onChange }) {
 
   function open() {
     if (popupEl) return;
-    if (openPopup && openPopup !== api) openPopup.close();
-    openPopup = api;
+    popupWillOpen(close);
 
     popupEl = document.createElement("div");
     popupEl.className = "dpopup";
@@ -173,7 +173,7 @@ export function createSliderPopup({ anchor, invoke, onChange }) {
     popupEl.remove();
     popupEl = sliderEl = valueEl = null;
     dragging = false;
-    if (openPopup === api) openPopup = null;
+    popupDidClose(close);
     invoke("set_popup_open", { open: false, rect: null }).catch((err) =>
       console.error("divebar: set_popup_open failed", err),
     );

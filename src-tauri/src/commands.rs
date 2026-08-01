@@ -158,6 +158,12 @@ pub async fn tray_activate(
     crate::tray::activate(address, secondary, x, y).await
 }
 
+/// Forwards a tray context-menu item click to the owning application.
+#[tauri::command]
+pub async fn tray_menu_click(address: String, menu_path: String, id: i32) -> Result<(), String> {
+    crate::tray::menu_click(address, menu_path, id).await
+}
+
 #[tauri::command]
 pub async fn get_config() -> Result<Value, String> {
     Ok(crate::config::load())

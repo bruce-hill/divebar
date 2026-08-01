@@ -1,7 +1,10 @@
 // System tray: StatusNotifierItem icons hosted by the backend over D-Bus
 // (divebar://tray events). Left click activates the app, middle click
-// sends the secondary activation. Hides itself when there are no items.
-// Legacy XEmbed-only tray apps are not supported.
+// sends the secondary activation, right click opens the item's dbusmenu
+// as a pop-down. Hides itself when there are no items. Legacy XEmbed-only
+// tray apps are not supported.
+
+import { openTrayMenu } from "../lib/menu-popup.js";
 
 export default {
   name: "tray",
@@ -82,6 +85,19 @@ export default {
           btn.addEventListener("click", (e) => activate(item, e, false));
           btn.addEventListener("auxclick", (e) => {
             if (e.button === 1) activate(item, e, true);
+          });
+          btn.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // don't open divebar settings
+            if (item.menu?.length && item.menuPath) {
+              openTrayMenu({
+                anchor: btn,
+                invoke,
+                address: item.address,
+                menuPath: item.menuPath,
+                items: item.menu,
+              });
+            }
           });
           return btn;
         }),
