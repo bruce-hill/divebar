@@ -13,8 +13,12 @@
 // (onStats/onEvent return an unsubscribe fn and replay the latest payload;
 // options come pre-merged with the schema's defaults).
 
+import { initTooltips } from "./lib/tooltip.js";
+
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
+
+initTooltips(invoke);
 
 // Adapt styling to the environment: without a compositor, shaped windows
 // can't have soft shadows or rounded transparent corners.

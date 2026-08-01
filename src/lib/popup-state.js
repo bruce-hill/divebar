@@ -12,3 +12,9 @@ export function popupWillOpen(close) {
 export function popupDidClose(close) {
   if (currentClose === close) currentClose = null;
 }
+
+/// Whether a real popup (slider/menu) is open — tooltips suppress
+/// themselves while one is, since they share the window shape state.
+export function hasOpenPopup() {
+  return currentClose !== null;
+}
