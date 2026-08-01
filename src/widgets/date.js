@@ -1,5 +1,5 @@
-// Date widget. Format: "Fri Jul 31" (optionally with year), fixed width so
-// the bar never jitters.
+// Date widget. Format: "Fri Jul 31" (optionally with year). Natural width —
+// it only changes once per day.
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
@@ -25,8 +25,6 @@ export default {
     el.className = "chip widget-date";
     const textEl = document.createElement("span");
     textEl.className = "text";
-    // "Fri Jul 31" = 10ch, "Fri Jul 31 2026" = 15ch
-    textEl.style.width = options.showYear ? "15ch" : "10ch";
     el.appendChild(textEl);
 
     const render = () => {
