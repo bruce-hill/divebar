@@ -38,14 +38,19 @@ function onEvent(name, cb) {
   if (!store) {
     store = { latest: null, subscribers: new Set() };
     stores.set(name, store);
-    listen(name, (event) => {
-      store.latest = event.payload;
-      for (const sub of store.subscribers) sub(store.latest);
-    });
+    listen(name, (event) => dispatch(name, event.payload));
   }
   store.subscribers.add(cb);
   if (store.latest !== null) cb(store.latest);
   return () => store.subscribers.delete(cb);
+}
+
+function dispatch(name, payload, onlyIfEmpty = false) {
+  const store = stores.get(name);
+  if (!store || payload == null) return;
+  if (onlyIfEmpty && store.latest !== null) return;
+  store.latest = payload;
+  for (const sub of store.subscribers) sub(store.latest);
 }
 
 const onStats = (cb) => onEvent("divebar://stats", cb);
@@ -132,8 +137,15 @@ async function renderBar(config) {
 }
 
 invoke("get_config")
-  .then(renderBar)
-  .catch((err) => console.error("divebar: get_config failed", err));
+  .then(async (config) => {
+    await renderBar(config);
+    // The watcher's initial emit happens before this page loads and is
+    // lost; pull the cached state so widgets aren't blank until the next
+    // real WM event. Skipped if a live event already arrived.
+    const cached = await invoke("get_hlwm_state");
+    dispatch("divebar://hlwm", cached, true);
+  })
+  .catch((err) => console.error("divebar: startup failed", err));
 
 // Live-apply config saved from the settings window.
 listen("divebar://config", (event) => renderBar(event.payload));

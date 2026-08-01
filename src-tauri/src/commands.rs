@@ -134,6 +134,13 @@ pub async fn get_env(
     Ok(serde_json::json!({ "composited": composited }))
 }
 
+/// Latest hlwm state for late subscribers (the initial event fires before
+/// the frontend loads).
+#[tauri::command]
+pub async fn get_hlwm_state() -> Result<Value, String> {
+    Ok(crate::hlwm::latest_state())
+}
+
 #[tauri::command]
 pub async fn get_config() -> Result<Value, String> {
     Ok(crate::config::load())

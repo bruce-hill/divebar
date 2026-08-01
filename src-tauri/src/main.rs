@@ -137,6 +137,7 @@ fn main() {
             commands::set_brightness,
             commands::set_popup_open,
             commands::get_env,
+            commands::get_hlwm_state,
             commands::get_config,
             commands::get_default_config,
             commands::save_config,
