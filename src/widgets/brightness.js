@@ -1,7 +1,9 @@
-// Screen brightness widget: SVG sun acting as a radial indicator — the
-// rays illuminate clockwise from the top as brightness increases (each ray
-// fades in across its share of the range). Clicking the chip opens a
-// pop-down slider. Hides itself when no backlight device exists.
+// Screen brightness widget: SVG lightbulb acting as a radial indicator —
+// rays illuminate speedometer-style, from bottom-left (0%) clockwise
+// over the top to bottom-right (100%), each fading in across its share
+// of the range; the screw base sits in the raysless bottom gap.
+// Clicking the chip opens a pop-down slider. Hides itself when no
+// backlight device exists.
 
 import { createSliderPopup } from "../lib/slider-popup.js";
 import {
@@ -13,8 +15,15 @@ import {
 } from "../lib/meter.js";
 
 const RAY_COUNT = 8;
-const RAY_INNER = 6.8;
-const RAY_OUTER = 10.4;
+const RAY_INNER = 7.4;
+const RAY_OUTER = 10.2;
+// The bulb's glass center; rays radiate from here, and it sits high so
+// the screw base fits below inside the viewBox.
+const CX = 12;
+const CY = 11.4;
+// The 270° arc the rays sweep, leaving the bottom quarter to the base.
+const RAY_START = (3 * Math.PI) / 4; // 135° = bottom-left
+const RAY_SWEEP = (3 * Math.PI) / 2;
 
 export default {
   name: "brightness",
@@ -31,7 +40,10 @@ export default {
       <span class="icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.6" stroke-linecap="round">
-          <circle class="core" cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>
+          <circle class="glass" cx="${CX}" cy="${CY}" r="4.2"
+                  fill="currentColor" stroke="none"/>
+          <path class="screw" d="M10.3 16.7 H13.7 M10.8 18.2 H13.2"
+                stroke-width="1.3"/>
           <g class="rays"></g>
         </svg>
       </span>
@@ -42,14 +54,15 @@ export default {
     const ticker = makeValueTicker(el.querySelector(".value"));
     let lastPercent = null;
 
-    // Rays ordered from the top, clockwise (screen coords: +angle is CW).
+    // Rays ordered along the sweep, endpoints included (screen coords:
+    // +angle is clockwise).
     const rays = Array.from({ length: RAY_COUNT }, (_, i) => {
-      const angle = -Math.PI / 2 + (i / RAY_COUNT) * 2 * Math.PI;
+      const angle = RAY_START + (i / (RAY_COUNT - 1)) * RAY_SWEEP;
       const ray = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      ray.setAttribute("x1", (12 + RAY_INNER * Math.cos(angle)).toFixed(2));
-      ray.setAttribute("y1", (12 + RAY_INNER * Math.sin(angle)).toFixed(2));
-      ray.setAttribute("x2", (12 + RAY_OUTER * Math.cos(angle)).toFixed(2));
-      ray.setAttribute("y2", (12 + RAY_OUTER * Math.sin(angle)).toFixed(2));
+      ray.setAttribute("x1", (CX + RAY_INNER * Math.cos(angle)).toFixed(2));
+      ray.setAttribute("y1", (CY + RAY_INNER * Math.sin(angle)).toFixed(2));
+      ray.setAttribute("x2", (CX + RAY_OUTER * Math.cos(angle)).toFixed(2));
+      ray.setAttribute("y2", (CY + RAY_OUTER * Math.sin(angle)).toFixed(2));
       raysEl.appendChild(ray);
       return ray;
     });

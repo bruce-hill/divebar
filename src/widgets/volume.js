@@ -13,14 +13,19 @@ import {
 
 const SPEAKER_SVG = `
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M4 9.5 H7.5 L12 5.5 V18.5 L7.5 14.5 H4 Z"
-          fill="currentColor" stroke="none"/>
-    <path class="wave1" d="M14.5 10 Q16.2 12 14.5 14"/>
-    <path class="wave2" d="M16.3 8.5 Q19 12 16.3 15.5"/>
-    <path class="wave3" d="M18.1 7 Q21.8 12 18.1 17"/>
-    <g class="mute" style="display: none">
-      <path d="M15.5 9.5 L20.5 14.5 M20.5 9.5 L15.5 14.5"/>
+       stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- The artwork only spans ~13 of the 24 viewBox units; scale it up
+         so the icon reads as large as the other widgets' icons. The
+         scale also multiplies the stroke, hence 1.5 (≈1.8 rendered). -->
+    <g transform="translate(12 12) scale(1.2) translate(-12 -12)">
+      <path d="M4 9.5 H7.5 L12 5.5 V18.5 L7.5 14.5 H4 Z"
+            fill="currentColor" stroke="none"/>
+      <path class="wave1" d="M14.5 10 Q16.2 12 14.5 14"/>
+      <path class="wave2" d="M16.3 8.5 Q19 12 16.3 15.5"/>
+      <path class="wave3" d="M18.1 7 Q21.8 12 18.1 17"/>
+      <g class="mute" style="display: none">
+        <path d="M15.5 9.5 L20.5 14.5 M20.5 9.5 L15.5 14.5"/>
+      </g>
     </g>
   </svg>
 `;
