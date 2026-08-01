@@ -6,6 +6,7 @@ mod hlwm;
 mod readers;
 mod stats;
 mod tray;
+mod weather;
 mod xicon;
 
 #[cfg(target_os = "linux")]
@@ -130,6 +131,7 @@ fn main() {
             stats::spawn_stats_emitter(app.handle().clone());
             hlwm::spawn_hlwm_watcher(app.handle().clone());
             tray::spawn_tray_host(app.handle().clone());
+            weather::spawn_weather(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -141,6 +143,7 @@ fn main() {
             commands::get_env,
             commands::get_hlwm_state,
             commands::get_tray_state,
+            commands::get_weather_state,
             commands::tray_activate,
             commands::tray_menu_click,
             commands::get_config,

@@ -141,6 +141,12 @@ pub async fn get_hlwm_state() -> Result<Value, String> {
     Ok(crate::hlwm::latest_state())
 }
 
+/// Latest weather state for late subscribers.
+#[tauri::command]
+pub async fn get_weather_state() -> Result<Value, String> {
+    Ok(crate::weather::latest_state())
+}
+
 /// Latest tray state for late subscribers.
 #[tauri::command]
 pub async fn get_tray_state() -> Result<Value, String> {
@@ -186,6 +192,8 @@ pub async fn save_config(app: tauri::AppHandle, config: Value) -> Result<(), Str
     app.emit("divebar://config", &config)
         .map_err(|e| e.to_string())?;
     apply_bar_height(&app, crate::bar_height_from(&config));
+    // In case the weather widget's location option changed.
+    crate::weather::request_refresh();
     Ok(())
 }
 

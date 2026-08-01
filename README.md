@@ -37,7 +37,8 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 
 Also available but not in the default config: **logo**, **cpu**, **memory**,
 **spacer** (invisible, configurable flex-grow — for pushing widget groups
-apart).
+apart), **weather** (wttr.in, no API key; icon + temp, details in tooltip,
+IP-based location unless configured).
 
 ## Configuration
 
