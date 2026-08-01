@@ -31,7 +31,9 @@ via `_NET_WM_STRUT_PARTIAL`), and shows a hardcoded set of widgets:
 - **time** — "2:27pm" (fixed width; optional 24-hour / seconds)
 - **settings** — gear that opens the settings window
 
-Also available but not in the default config: **logo**, **cpu**, **memory**.
+Also available but not in the default config: **logo**, **cpu**, **memory**,
+**spacer** (invisible, configurable flex-grow — for pushing widget groups
+apart).
 
 ## Configuration
 

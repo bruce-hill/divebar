@@ -14,5 +14,6 @@ export default [
   "cpu",
   "memory",
   "logo",
+  "spacer",
   "settings",
 ];
