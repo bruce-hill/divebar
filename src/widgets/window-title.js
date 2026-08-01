@@ -22,11 +22,18 @@ export default {
       choices: ["left", "center", "right"],
       default: "left",
     },
+    {
+      key: "font",
+      label: "Font",
+      type: "font",
+      default: "", // empty = the bar's default font
+    },
   ],
   create({ options, onEvent }) {
     const el = document.createElement("div");
     el.className = "widget-window-title";
     el.style.textAlign = options.align;
+    if (options.font) el.style.fontFamily = `"${options.font}"`;
 
     const unsubscribe = onEvent("divebar://hlwm", ({ windowTitle }) => {
       el.textContent = windowTitle ?? "";

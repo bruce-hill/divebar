@@ -141,6 +141,7 @@ fn main() {
             commands::save_config,
             commands::open_settings,
             commands::close_settings,
+            commands::list_fonts,
             commands::launch_wifi_gui,
         ])
         .run(tauri::generate_context!())

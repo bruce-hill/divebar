@@ -66,6 +66,16 @@ function endDrag() {
 
 // --- Widget rows -----------------------------------------------------------
 
+// Installed font families, fetched once and shared by all font pickers.
+let fontsPromise = null;
+function loadFonts() {
+  fontsPromise ??= invoke("list_fonts").catch((err) => {
+    console.error("divebar settings: list_fonts failed", err);
+    return null;
+  });
+  return fontsPromise;
+}
+
 function settingInput(schema, entry) {
   const current = entry.options?.[schema.key] ?? schema.default;
   let input;
@@ -89,6 +99,36 @@ function settingInput(schema, entry) {
       (entry.options ??= {})[schema.key] = input.value;
       scheduleSave();
     });
+  } else if (schema.type === "font") {
+    input = el("select");
+    input.classList.add("font-select");
+    const defaultOpt = el("option", "", "(default)");
+    defaultOpt.value = "";
+    input.append(defaultOpt);
+    if (current) {
+      // Keep the saved value selectable before the font list arrives.
+      const opt = el("option", "", current);
+      opt.value = current;
+      input.append(opt);
+    }
+    input.value = current ?? "";
+    loadFonts().then((fonts) => {
+      if (!fonts || !input.isConnected) return;
+      input.replaceChildren(defaultOpt);
+      for (const family of fonts) {
+        const opt = el("option", "", family);
+        opt.value = family;
+        opt.style.fontFamily = `"${family}"`;
+        input.append(opt);
+      }
+      input.value = current ?? "";
+    });
+    input.addEventListener("change", () => {
+      (entry.options ??= {})[schema.key] = input.value;
+      input.style.fontFamily = input.value ? `"${input.value}"` : "";
+      scheduleSave();
+    });
+    if (current) input.style.fontFamily = `"${current}"`;
   } else if (schema.type === "number") {
     input = el("input");
     input.type = "number";

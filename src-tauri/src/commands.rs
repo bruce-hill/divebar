@@ -225,6 +225,23 @@ pub async fn open_settings(
     Ok(())
 }
 
+/// Lists installed font families (via fontconfig) for font-picker settings.
+#[tauri::command]
+pub async fn list_fonts() -> Result<Vec<String>, String> {
+    let output = readers::run("fc-list", &[":", "family"]).ok_or("fc-list failed")?;
+    let mut families = std::collections::BTreeSet::new();
+    for line in output.lines() {
+        // Lines are comma-separated family aliases; the first is canonical.
+        if let Some(first) = line.split(',').next() {
+            let name = first.trim();
+            if !name.is_empty() {
+                families.insert(name.to_string());
+            }
+        }
+    }
+    Ok(families.into_iter().collect())
+}
+
 #[tauri::command]
 pub async fn close_settings(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;

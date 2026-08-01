@@ -269,6 +269,8 @@ select option {
 
 input[type="number"] { width: 96px; }
 
+.font-select { max-width: 280px; }
+
 input[type="checkbox"] {
   width: 20px;
   height: 20px;
