@@ -4,6 +4,12 @@ Terms the code and docs use for divebar's concepts. Use these names; don't
 invent synonyms.
 
 - **Bar** — the always-visible statusbar strip at the top of the screen.
+- **Bar schema** — the bar-level settings (height, padding, accent,
+  font): schema, defaults, and CSS-variable mapping all live in
+  `src/lib/bar-config.js`; absent config keys mean "use the defaults".
+  The one mirror is `DEFAULT_BAR_HEIGHT` in `main.rs` (the window is
+  sized before the webview loads) — keep it equal to the schema's
+  height default.
 - **Widget** — a module on the bar (`src/widgets/*.js`) satisfying the
   contract in `src/main.js`: `{ name, css, settings?, create(ctx) }`.
 - **Chip** — a widget's visual pill on the bar (icon + optional value).

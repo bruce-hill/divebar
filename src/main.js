@@ -14,6 +14,7 @@
 // options come pre-merged with the schema's defaults).
 
 import { initTooltips } from "./lib/tooltip.js";
+import { applyBarStyle } from "./lib/bar-config.js";
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -78,31 +79,6 @@ function defaultOptions(widget) {
     defaults[setting.key] = setting.default;
   }
   return defaults;
-}
-
-// Derive all sizing (chip height, font, icons) from the configured bar
-// height and padding, so widgets scale with the available space.
-function applyBarStyle(config) {
-  const bar = config?.bar ?? {};
-  const height = bar.height ?? 48;
-  const padX = bar.paddingX ?? 10;
-  const padY = bar.paddingY ?? 6;
-  const chip = Math.max(14, height - 2 * padY);
-  const root = document.documentElement.style;
-  root.setProperty("--bar-height", `${height}px`);
-  root.setProperty("--bar-pad-x", `${padX}px`);
-  root.setProperty("--bar-pad-y", `${padY}px`);
-  root.setProperty("--chip-height", `${chip}px`);
-  root.setProperty("--chip-radius", `${chip / 2}px`);
-  root.setProperty("--bar-font", `${Math.round(chip * 0.55)}px`);
-  root.setProperty("--icon-size", `${Math.round(chip * 0.88)}px`);
-  if (bar.accent) root.setProperty("--accent", bar.accent);
-  else root.removeProperty("--accent");
-  if (bar.font) {
-    root.setProperty("--font", `"${bar.font}", Inter, Cantarell, system-ui, sans-serif`);
-  } else {
-    root.removeProperty("--font");
-  }
 }
 
 let mounted = []; // [{ key, instance }] in bar order

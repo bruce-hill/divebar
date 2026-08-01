@@ -16,7 +16,10 @@ mod linux;
 
 use tauri::{Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder};
 
-/// Fallback bar height (logical px) when the config has none.
+/// Fallback bar height (logical px) when the config has none. The window
+/// must be sized before the webview loads, so this mirrors the height
+/// default in the frontend's bar schema (src/lib/bar-config.js) — keep
+/// the two equal.
 pub const DEFAULT_BAR_HEIGHT: f64 = 48.0;
 
 /// Extra transparent space below the bar (logical px) where pop-down panels

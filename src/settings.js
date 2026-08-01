@@ -4,6 +4,7 @@
 // and applies to the real bar immediately.
 
 import WIDGET_NAMES from "./widgets/index.js";
+import { BAR_SETTINGS } from "./lib/bar-config.js";
 
 const modules = {};
 let state = { widgets: [] };
@@ -264,14 +265,6 @@ function setupRowsDnD(rowsEl) {
 }
 
 // --- Bar settings ----------------------------------------------------------
-
-const BAR_SETTINGS = [
-  { key: "height", label: "Bar height (px)", type: "number", min: 24, max: 128, default: 48 },
-  { key: "paddingX", label: "Horizontal padding (px)", type: "number", min: 0, max: 48, default: 10 },
-  { key: "paddingY", label: "Vertical padding (px)", type: "number", min: 0, max: 24, default: 6 },
-  { key: "accent", label: "Accent color", type: "color", default: "#7aa2f7" },
-  { key: "font", label: "Font", type: "font", default: "" },
-];
 
 function barSection() {
   const section = el("section");

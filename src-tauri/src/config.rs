@@ -15,9 +15,11 @@ pub fn config_file() -> PathBuf {
     config_dir().join("config.json")
 }
 
+/// Bar-level settings (height, padding, accent, font) are deliberately
+/// absent: their schema and defaults live in the frontend
+/// (src/lib/bar-config.js), and absent keys mean "use the defaults".
 pub fn default_config() -> Value {
     json!({
-        "bar": { "height": 48, "paddingX": 10, "paddingY": 6 },
         "widgets": [
             { "widget": "workspaces", "options": {} },
             { "widget": "window-title", "options": {} },
