@@ -1,12 +1,11 @@
-// Drives the meter toolkit (peek, ticker, segment fill) through its
-// interfaces with fake timers and a spied animate.
+// Drives the meter toolkit (peek, segment fill) through its interfaces
+// with fake timers.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   METER_SETTINGS,
   meterValueCss,
   makePeek,
-  makeValueTicker,
   segmentFill,
 } from "../src/lib/meter.js";
 
@@ -26,7 +25,7 @@ describe("makePeek", () => {
 
     peek.show();
     expect(el.classList.contains("compact")).toBe(false);
-    vi.advanceTimersByTime(2500);
+    vi.advanceTimersByTime(5000);
     expect(el.classList.contains("compact")).toBe(true);
   });
 
@@ -35,11 +34,11 @@ describe("makePeek", () => {
     const peek = makePeek(el);
 
     peek.show();
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(4000);
     peek.show(); // change arrives while revealed
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(4000);
     expect(el.classList.contains("compact")).toBe(false);
-    vi.advanceTimersByTime(500);
+    vi.advanceTimersByTime(1000);
     expect(el.classList.contains("compact")).toBe(true);
   });
 
@@ -51,42 +50,6 @@ describe("makePeek", () => {
     peek.cancel();
     vi.advanceTimersByTime(10000);
     expect(el.classList.contains("compact")).toBe(false);
-  });
-});
-
-describe("makeValueTicker", () => {
-  function makeValueEl() {
-    const valueEl = document.createElement("span");
-    valueEl.animate = vi.fn();
-    return valueEl;
-  }
-
-  it("sets the text without animating when unchanged", () => {
-    const valueEl = makeValueEl();
-    const ticker = makeValueTicker(valueEl);
-    ticker.update(50, false);
-    expect(valueEl.textContent).toBe("50%");
-    expect(valueEl.animate).not.toHaveBeenCalled();
-  });
-
-  it("animates direction-aware on change", () => {
-    const valueEl = makeValueEl();
-    const ticker = makeValueTicker(valueEl);
-    ticker.update(50, false);
-    ticker.update(60, true); // up
-    expect(valueEl.animate).toHaveBeenCalledOnce();
-    expect(valueEl.animate.mock.calls[0][0][0].transform).toBe("translateY(5px)");
-    ticker.update(40, true); // down
-    expect(valueEl.animate.mock.calls[1][0][0].transform).toBe("translateY(-5px)");
-    expect(valueEl.textContent).toBe("40%");
-  });
-
-  it("skips the animation when the text would not change", () => {
-    const valueEl = makeValueEl();
-    const ticker = makeValueTicker(valueEl);
-    ticker.update(50, false);
-    ticker.update(50, true); // changed flag set, but same rendered text
-    expect(valueEl.animate).not.toHaveBeenCalled();
   });
 });
 

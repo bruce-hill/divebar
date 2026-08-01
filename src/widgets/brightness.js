@@ -10,7 +10,6 @@ import {
   METER_SETTINGS,
   meterValueCss,
   makePeek,
-  makeValueTicker,
   segmentFill,
 } from "../lib/meter.js";
 
@@ -51,7 +50,7 @@ export default {
     `;
     const raysEl = el.querySelector(".rays");
     const peek = makePeek(el);
-    const ticker = makeValueTicker(el.querySelector(".value"));
+    const valueEl = el.querySelector(".value");
     let lastPercent = null;
 
     // Rays ordered along the sweep, endpoints included (screen coords:
@@ -74,7 +73,7 @@ export default {
         lastPercent !== null && brightness.percent !== lastPercent;
       lastPercent = brightness.percent;
       if (changed && !options.showPercent && options.peekOnChange) peek.show();
-      ticker.update(brightness.percent, changed);
+      valueEl.textContent = `${brightness.percent}%`;
       el.title = `Brightness: ${brightness.percent}%`;
       popup.setValue(brightness.percent);
       // Radial fill: the level sweeps clockwise through the rays.

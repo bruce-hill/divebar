@@ -7,7 +7,6 @@ import {
   METER_SETTINGS,
   meterValueCss,
   makePeek,
-  makeValueTicker,
   segmentFill,
 } from "../lib/meter.js";
 
@@ -64,7 +63,7 @@ export default {
     `;
     const iconEl = el.querySelector(".icon");
     const peek = makePeek(el);
-    const ticker = makeValueTicker(el.querySelector(".value"));
+    const valueEl = el.querySelector(".value");
     let leadBtn = null;
     let lastPercent = null;
     let lastMuted = null;
@@ -78,7 +77,7 @@ export default {
       lastPercent = volume.percent;
       lastMuted = volume.muted;
       if (changed && !options.showPercent && options.peekOnChange) peek.show();
-      ticker.update(volume.percent, changed);
+      valueEl.textContent = `${volume.percent}%`;
       el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);
       el.classList.toggle("muted", volume.muted);

@@ -1,7 +1,7 @@
 // Shared pieces for percent-meter chips (volume, brightness): the
-// collapsible percentage value, the peek-on-change reveal, the value
-// ticker animation, and the segmented icon fill. Widgets compose these
-// in their own create() — see volume.js and brightness.js.
+// collapsible percentage value, the peek-on-change reveal, and the
+// segmented icon fill. Widgets compose these in their own create() —
+// see volume.js and brightness.js.
 
 export const METER_SETTINGS = [
   { key: "showPercent", label: "Show percent", type: "boolean", default: false },
@@ -34,7 +34,7 @@ export function meterValueCss(widgetClass) {
 
 // Temporarily reveal the percentage after a change, then re-collapse.
 // cancel() in the widget's destroy so the timer doesn't outlive the chip.
-export function makePeek(el, ms = 2500) {
+export function makePeek(el, ms = 5000) {
   let timer = null;
   return {
     show() {
@@ -48,28 +48,6 @@ export function makePeek(el, ms = 2500) {
     cancel() {
       if (timer) clearTimeout(timer);
       timer = null;
-    },
-  };
-}
-
-// Nudges the value text up/down as it changes direction-aware.
-export function makeValueTicker(valueEl) {
-  let lastShown = null;
-  return {
-    update(percent, changed) {
-      const text = `${percent}%`;
-      if (changed && valueEl.textContent !== text) {
-        const up = percent > (lastShown ?? percent);
-        valueEl.animate(
-          [
-            { opacity: 0.3, transform: `translateY(${up ? 5 : -5}px)` },
-            { opacity: 1, transform: "none" },
-          ],
-          { duration: 90, easing: "ease-out" },
-        );
-      }
-      lastShown = percent;
-      valueEl.textContent = text;
     },
   };
 }
