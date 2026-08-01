@@ -253,16 +253,22 @@ pub async fn open_settings(
     .title("divebar settings")
     .inner_size(560.0 * zoom, 520.0 * zoom)
     .center()
+    .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
     if zoom != 1.0 {
         let _ = win.set_zoom(zoom);
     }
-    #[cfg(target_os = "linux")]
-    {
-        let gtk_win = win.clone();
-        let _ = win.run_on_main_thread(move || crate::linux::make_dialog(&gtk_win));
-    }
+    // Show only after the dialog type hint is set: mapping first and
+    // hinting after left the WM briefly managing it as a normal tiled
+    // window, which delayed its appearance by ~1s under herbstluftwm.
+    let show_win = win.clone();
+    let _ = win.run_on_main_thread(move || {
+        #[cfg(target_os = "linux")]
+        crate::linux::make_dialog(&show_win);
+        let _ = show_win.show();
+        let _ = show_win.set_focus();
+    });
     Ok(())
 }
 
