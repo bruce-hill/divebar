@@ -49,6 +49,23 @@ const CSS = `
     color: var(--bar-fg);
     font-variant-numeric: tabular-nums;
   }
+  .dpopup .dpopup-lead {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--bar-fg);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .dpopup .dpopup-lead:hover { background: var(--chip-bg-hover); }
+  .dpopup .dpopup-lead svg {
+    display: block;
+    width: calc(var(--icon-size) * 0.95);
+    height: calc(var(--icon-size) * 0.95);
+  }
   /* Shaped (compositor-less) windows: no soft shadow, flush under the bar,
      and only the bottom corners rounded — mirrored by the X11 shape the
      backend builds (radius must match set_popup_open's). */
@@ -63,7 +80,9 @@ const THROTTLE_MS = 80;
 
 let stylesInjected = false;
 
-export function createSliderPopup({ anchor, invoke, onChange }) {
+// createLeading (optional): called on each open; returns an element placed
+// before the slider (e.g. a mute toggle button).
+export function createSliderPopup({ anchor, invoke, onChange, createLeading }) {
   if (!stylesInjected) {
     stylesInjected = true;
     const style = document.createElement("style");
@@ -132,6 +151,11 @@ export function createSliderPopup({ anchor, invoke, onChange }) {
     valueEl = document.createElement("span");
     valueEl.className = "dpopup-value";
     valueEl.textContent = `${lastValue}%`;
+    if (createLeading) {
+      const lead = createLeading();
+      lead.classList.add("dpopup-lead");
+      popupEl.append(lead);
+    }
     popupEl.append(sliderEl, valueEl);
     document.body.appendChild(popupEl);
 
