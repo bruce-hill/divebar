@@ -5,6 +5,7 @@ mod config;
 mod hlwm;
 mod readers;
 mod stats;
+mod xicon;
 
 #[cfg(target_os = "linux")]
 mod linux;

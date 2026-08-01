@@ -9,45 +9,61 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
 pub fn spawn_hlwm_watcher(app: AppHandle) {
-    std::thread::spawn(move || loop {
-        emit_state(&app);
+    std::thread::spawn(move || {
+        let mut icons = crate::xicon::IconFetcher::new();
+        loop {
+            emit_state(&app, &mut icons);
 
-        // Block on herbstclient --idle; every line it prints is a WM event,
-        // and we just re-query the full state (cheap) rather than parsing
-        // individual event types.
-        match Command::new("herbstclient")
-            .arg("--idle")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-        {
-            Ok(mut child) => {
-                if let Some(stdout) = child.stdout.take() {
-                    for line in BufReader::new(stdout).lines() {
-                        if line.is_err() {
-                            break;
+            // Block on herbstclient --idle; every line it prints is a WM
+            // event, and we just re-query the full state (cheap) rather
+            // than parsing individual event types.
+            match Command::new("herbstclient")
+                .arg("--idle")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .spawn()
+            {
+                Ok(mut child) => {
+                    if let Some(stdout) = child.stdout.take() {
+                        for line in BufReader::new(stdout).lines() {
+                            if line.is_err() {
+                                break;
+                            }
+                            emit_state(&app, &mut icons);
                         }
-                        emit_state(&app);
                     }
+                    let _ = child.wait();
                 }
-                let _ = child.wait();
+                Err(err) => {
+                    eprintln!("divebar: failed to run herbstclient --idle: {err}");
+                }
             }
-            Err(err) => {
-                eprintln!("divebar: failed to run herbstclient --idle: {err}");
-            }
-        }
 
-        // herbstclient exited (hlwm not running?) — retry with backoff.
-        std::thread::sleep(Duration::from_secs(5));
+            // herbstclient exited (hlwm not running?) — retry with backoff.
+            std::thread::sleep(Duration::from_secs(5));
+        }
     });
 }
 
-fn emit_state(app: &AppHandle) {
+fn emit_state(app: &AppHandle, icons: &mut crate::xicon::IconFetcher) {
+    let title = read_window_title();
+    let class = run_herbstclient(&["attr", "clients.focus.class"]).unwrap_or_default();
+    let icon = run_herbstclient(&["attr", "clients.focus.winid"])
+        .as_deref()
+        .and_then(parse_winid)
+        .and_then(|id| icons.icon_for(id, if class.is_empty() { "?" } else { &class }));
+
     let payload = json!({
         "tags": read_tags(),
-        "windowTitle": read_window_title(),
+        "windowTitle": title,
+        "windowClass": class,
+        "windowIcon": icon,
     });
     let _ = app.emit("divebar://hlwm", payload);
+}
+
+fn parse_winid(s: &str) -> Option<u32> {
+    u32::from_str_radix(s.trim().trim_start_matches("0x"), 16).ok()
 }
 
 /// Parses `herbstclient tag_status`: tab-separated entries where the first

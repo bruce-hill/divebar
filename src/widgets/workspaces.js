@@ -5,6 +5,7 @@ export default {
   name: "workspaces",
   css: `
     .widget-workspaces {
+      position: relative;
       display: flex;
       align-items: center;
       gap: 2px;
@@ -13,7 +14,22 @@ export default {
       border-radius: var(--chip-radius);
       background: var(--chip-bg);
     }
+    /* Accent pill that glides between tags instead of teleporting. */
+    .widget-workspaces .tag-indicator {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      border-radius: calc((var(--chip-height) - 6px) / 2);
+      background: var(--accent);
+      opacity: 0;
+      transition:
+        left 220ms cubic-bezier(0.45, 0, 0.2, 1),
+        width 220ms cubic-bezier(0.45, 0, 0.2, 1),
+        opacity 150ms ease;
+    }
     .widget-workspaces .tag {
+      position: relative;
+      z-index: 1;
       min-width: 1.5em;
       height: calc(var(--chip-height) - 6px);
       padding: 0 0.35em;
@@ -36,7 +52,6 @@ export default {
     }
     .widget-workspaces .tag.focused {
       color: #10121a;
-      background: var(--accent);
       font-weight: 700;
     }
     .widget-workspaces .tag.urgent {
@@ -57,6 +72,31 @@ export default {
   create({ options, onEvent, invoke }) {
     const el = document.createElement("div");
     el.className = "widget-workspaces";
+    const indicator = document.createElement("div");
+    indicator.className = "tag-indicator";
+    el.appendChild(indicator);
+
+    let positioned = false;
+
+    function moveIndicator() {
+      // rAF so offsets are valid after (re)mounting or rebuilding.
+      requestAnimationFrame(() => {
+        const focused = el.querySelector(".tag.focused");
+        if (!focused) {
+          indicator.style.opacity = "0";
+          return;
+        }
+        // Jump (no glide) into the first position after mount.
+        if (!positioned) {
+          indicator.style.transition = "none";
+          requestAnimationFrame(() => (indicator.style.transition = ""));
+          positioned = true;
+        }
+        indicator.style.left = `${focused.offsetLeft}px`;
+        indicator.style.width = `${focused.offsetWidth}px`;
+        indicator.style.opacity = "1";
+      });
+    }
 
     const unsubscribe = onEvent("divebar://hlwm", ({ tags }) => {
       if (!tags) return;
@@ -68,6 +108,7 @@ export default {
 
       if (!sameTags) {
         el.replaceChildren(
+          indicator,
           ...tags.map((tag, i) => {
             const btn = document.createElement("button");
             btn.className = "tag";
@@ -83,10 +124,12 @@ export default {
             return btn;
           }),
         );
+        positioned = false;
       }
       el.querySelectorAll(".tag").forEach((btn, i) => {
         btn.className = `tag ${tags[i].state}`;
       });
+      moveIndicator();
     });
 
     return { el, destroy: unsubscribe };
