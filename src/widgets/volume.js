@@ -74,9 +74,12 @@ export default {
       const changed =
         lastPercent !== null &&
         (volume.percent !== lastPercent || volume.muted !== lastMuted);
+      // Muting is a silencing gesture; only peek when unmuting or changing level.
+      const justMuted = volume.muted && !lastMuted;
       lastPercent = volume.percent;
       lastMuted = volume.muted;
-      if (changed && !options.showPercent && options.peekOnChange) peek.show();
+      if (changed && !justMuted && !options.showPercent && options.peekOnChange)
+        peek.show();
       valueEl.textContent = `${volume.percent}%`;
       el.title = volume.muted ? `Volume: muted` : `Volume: ${volume.percent}%`;
       popup.setValue(volume.percent);
