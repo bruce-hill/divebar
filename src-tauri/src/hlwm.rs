@@ -2,43 +2,58 @@
 //! pushes tag (workspace) state + the focused window title to the frontend
 //! as `divebar://hlwm` events.
 
+use crate::events::Trigger;
 use serde_json::{json, Value};
 use std::ops::ControlFlow;
 use std::time::Duration;
 use tauri::AppHandle;
 
+/// Post-event settle time: each state query is a few herbstclient spawns,
+/// so a burst of WM events (a client retitling rapidly, a flurry of focus
+/// changes) coalesces into one re-query instead of one per line.
+const SETTLE: Duration = Duration::from_millis(25);
+/// Without a notify the loop only wakes for an hourly resync — harmless
+/// (an unchanged payload is dropped at emit) and a safety net in case an
+/// event was ever missed.
+const RESYNC_INTERVAL: Duration = Duration::from_secs(60 * 60);
+
+static REFRESH: Trigger = Trigger::new();
+
 pub fn spawn_hlwm_watcher(app: AppHandle) {
-    let mut icons = crate::xicon::IconFetcher::new();
     // Every line herbstclient --idle prints is a WM event; we just
-    // re-query the full state (cheap) rather than parsing individual
-    // event types. Start events re-sync after gaps (hlwm not running
-    // yet, or restarted).
+    // re-query the full state rather than parsing individual event
+    // types. Start events re-sync after gaps (hlwm not running yet, or
+    // restarted).
     crate::readers::spawn_line_watcher(
         "herbstclient",
         &["--idle"],
         Duration::from_secs(5),
-        move |_event| {
-            emit_state(&app, &mut icons);
+        |_event| {
+            REFRESH.notify();
             ControlFlow::Continue(())
         },
     );
+
+    let mut icons = crate::xicon::IconFetcher::new();
+    crate::events::spawn_poll_loop(app, "hlwm", &REFRESH, RESYNC_INTERVAL, SETTLE, move || {
+        Some(read_state(&mut icons))
+    });
 }
 
-fn emit_state(app: &AppHandle, icons: &mut crate::xicon::IconFetcher) {
+fn read_state(icons: &mut crate::xicon::IconFetcher) -> Value {
     let title = read_window_title();
     let class = run_herbstclient(&["attr", "clients.focus.class"]).unwrap_or_default();
     let winid = run_herbstclient(&["attr", "clients.focus.winid"]).unwrap_or_default();
     let icon = parse_winid(&winid)
         .and_then(|id| icons.icon_for(id, if class.is_empty() { "?" } else { &class }));
 
-    let payload = json!({
+    json!({
         "tags": read_tags(),
         "windowId": winid,
         "windowTitle": title,
         "windowClass": class,
         "windowIcon": icon,
-    });
-    crate::events::emit(app, "hlwm", payload);
+    })
 }
 
 fn parse_winid(s: &str) -> Option<u32> {

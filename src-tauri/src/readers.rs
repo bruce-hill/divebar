@@ -110,23 +110,37 @@ fn parse_volume(output: &str) -> Value {
     })
 }
 
+/// Reads the first backlight under /sys/class/backlight directly —
+/// this runs on every stats round, so no brightnessctl spawn (setting
+/// still goes through brightnessctl, but only on user action).
 pub fn read_brightness() -> Value {
-    match run("brightnessctl", &["-m"]) {
-        Some(output) => parse_brightness(&output),
-        None => Value::Null,
-    }
-}
-
-/// `brightnessctl -m` → "intel_backlight,backlight,19200,40%,48000"
-fn parse_brightness(output: &str) -> Value {
-    let Some(percent) = output
-        .split(',')
-        .find_map(|field| field.strip_suffix('%'))
-        .and_then(|p| p.parse::<u32>().ok())
-    else {
+    let Ok(entries) = std::fs::read_dir("/sys/class/backlight") else {
         return Value::Null;
     };
-    json!({ "percent": percent })
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let read_num = |name: &str| -> Option<f64> {
+            std::fs::read_to_string(path.join(name))
+                .ok()?
+                .trim()
+                .parse::<f64>()
+                .ok()
+        };
+        if let Some(percent) = brightness_percent(read_num("brightness"), read_num("max_brightness"))
+        {
+            return json!({ "percent": percent });
+        }
+    }
+    Value::Null
+}
+
+/// Raw brightness / max_brightness → whole percent.
+fn brightness_percent(now: Option<f64>, max: Option<f64>) -> Option<u32> {
+    let (now, max) = (now?, max?);
+    if max <= 0.0 || now < 0.0 {
+        return None;
+    }
+    Some(((now / max * 100.0).round() as u32).min(100))
 }
 
 /// SSID from iwgetid; signal quality from /proc/net/wireless.
@@ -266,16 +280,19 @@ mod tests {
     }
 
     #[test]
-    fn brightness_percent_field() {
-        assert_eq!(
-            parse_brightness("intel_backlight,backlight,19200,40%,48000"),
-            json!({ "percent": 40 })
-        );
+    fn brightness_percent_from_raw_values() {
+        assert_eq!(brightness_percent(Some(19200.0), Some(48000.0)), Some(40));
+        assert_eq!(brightness_percent(Some(0.0), Some(48000.0)), Some(0));
+        assert_eq!(brightness_percent(Some(48000.0), Some(48000.0)), Some(100));
+        assert_eq!(brightness_percent(Some(50000.0), Some(48000.0)), Some(100)); // capped
     }
 
     #[test]
-    fn brightness_missing_percent_is_null() {
-        assert_eq!(parse_brightness("intel_backlight,backlight,19200"), Value::Null);
+    fn brightness_percent_bad_inputs_are_none() {
+        assert_eq!(brightness_percent(None, Some(48000.0)), None);
+        assert_eq!(brightness_percent(Some(19200.0), None), None);
+        assert_eq!(brightness_percent(Some(19200.0), Some(0.0)), None);
+        assert_eq!(brightness_percent(Some(-1.0), Some(48000.0)), None);
     }
 
     #[test]

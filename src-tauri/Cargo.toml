@@ -27,3 +27,7 @@ gdk = "0.18"
 strip = true
 lto = false
 incremental = true
+# Abort on panic: drops the unwinding machinery from the binary. Note a
+# panic on any thread now exits the whole bar instead of killing just
+# that thread.
+panic = "abort"
