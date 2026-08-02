@@ -320,6 +320,21 @@ pub async fn launch_wifi_gui() -> Result<(), String> {
     Ok(())
 }
 
+/// Locks the screen by launching `slock`.
+#[tauri::command]
+pub async fn lock_screen() -> Result<(), String> {
+    let child = Command::new("slock")
+        .spawn()
+        .map_err(|e| format!("failed to launch slock: {e}"))?;
+    // Reap the child in the background so it doesn't linger as a zombie
+    // once the user unlocks the screen.
+    std::thread::spawn(move || {
+        let mut child = child;
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

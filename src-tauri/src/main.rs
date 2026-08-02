@@ -160,6 +160,7 @@ fn main() {
             commands::close_settings,
             commands::list_fonts,
             commands::launch_wifi_gui,
+            commands::lock_screen,
             commands::resolve_location,
         ])
         .run(tauri::generate_context!())

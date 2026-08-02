@@ -14,5 +14,6 @@ export default [
   "tray",
   "weather",
   "media",
+  "lock",
   "spacer",
 ];
