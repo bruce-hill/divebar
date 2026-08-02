@@ -1,6 +1,6 @@
 // Focused window title. Expands to fill available space (flex-grow) and
 // fades out at the edge when truncated. Shows the app's real icon
-// (_NET_WM_ICON via the backend) and a color-coded app badge, strips the
+// (_NET_WM_ICON via the backend) and optionally the app name, strips the
 // redundant " — AppName" suffix from titles, animates changes, and falls
 // back to the current workspace name when nothing is focused.
 
@@ -52,6 +52,10 @@ export default {
     .widget-window-title .app-badge.no-icon {
       padding-left: calc(var(--chip-height) * 0.3);
     }
+    /* Icon only → the text padding just adds a gap before the title */
+    .widget-window-title .app-badge.no-name {
+      padding: 0;
+    }
     .widget-window-title .title-text {
       flex: 1;
       min-width: 0;
@@ -80,6 +84,8 @@ export default {
     }
   `,
   settings: [
+    { key: "showAppIcon", label: "Show app icon", type: "boolean", default: true },
+    { key: "showAppName", label: "Show app name", type: "boolean", default: false },
     {
       key: "align",
       label: "Text alignment",
@@ -146,7 +152,9 @@ export default {
           }
         }
 
-        if (cls && !empty) {
+        const showIcon = options.showAppIcon && Boolean(windowIcon) && !empty;
+        const showName = options.showAppName && Boolean(cls) && !empty;
+        if (showIcon || showName) {
           nameEl.textContent = cls.toLowerCase();
           badgeEl.style.display = "flex";
           if (cls !== lastClass && seenFirst && windowChanged) {
@@ -158,10 +166,11 @@ export default {
         }
         lastClass = cls;
 
-        const showIcon = Boolean(windowIcon) && !empty;
         if (showIcon && iconEl.src !== windowIcon) iconEl.src = windowIcon;
         iconEl.style.display = showIcon ? "block" : "none";
+        nameEl.style.display = showName ? "" : "none";
         badgeEl.classList.toggle("no-icon", !showIcon);
+        badgeEl.classList.toggle("no-name", !showName);
 
         seenFirst = true;
       },
