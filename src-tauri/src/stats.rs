@@ -14,7 +14,12 @@ use std::ops::ControlFlow;
 use std::time::Duration;
 use tauri::AppHandle;
 
-const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
+/// The periodic poll is only a backstop for sources with no change
+/// watcher (wifi signal, battery percent drift) — volume, brightness,
+/// and charger changes arrive via the watchers below, and slider moves
+/// get fresh readings from their control commands. Kept long: each round
+/// spawns wpctl/brightnessctl/iwgetid.
+const REFRESH_INTERVAL: Duration = Duration::from_secs(15);
 /// Post-trigger settle time, so a burst of change events (e.g. holding a
 /// volume key) coalesces into one refresh.
 const SETTLE: Duration = Duration::from_millis(30);

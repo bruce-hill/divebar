@@ -18,15 +18,26 @@ use tauri::{AppHandle, Emitter};
 static LATEST: Mutex<BTreeMap<&'static str, Value>> = Mutex::new(BTreeMap::new());
 
 /// Caches `payload` for late subscribers and emits it as a
-/// `divebar://<channel>` event. Returns false when the app is shutting
-/// down (the event loop is gone), so poll loops can exit.
+/// `divebar://<channel>` event. A payload identical to the channel's last
+/// one is dropped — subscribers hold full per-channel state, so a no-change
+/// emit would only wake the webview for nothing. Returns false when the
+/// app is shutting down (the event loop is gone), so poll loops can exit.
 pub fn emit(app: &AppHandle, channel: &'static str, payload: Value) -> bool {
-    record(channel, payload.clone());
+    if !record(channel, &payload) {
+        return true;
+    }
     app.emit(&format!("divebar://{channel}"), payload).is_ok()
 }
 
-fn record(channel: &'static str, payload: Value) {
-    LATEST.lock().unwrap().insert(channel, payload);
+/// Caches `payload` as the channel's latest; returns false (and caches
+/// nothing) when it equals what's already cached.
+fn record(channel: &'static str, payload: &Value) -> bool {
+    let mut map = LATEST.lock().unwrap();
+    if map.get(channel) == Some(payload) {
+        return false;
+    }
+    map.insert(channel, payload.clone());
+    true
 }
 
 /// The latest payload of every channel that has emitted, keyed by channel
@@ -136,12 +147,20 @@ mod tests {
 
     #[test]
     fn record_and_replay_latest_per_channel() {
-        record("test-alpha", json!({ "n": 1 }));
-        record("test-beta", json!("hi"));
-        record("test-alpha", json!({ "n": 2 })); // newer payload wins
+        record("test-alpha", &json!({ "n": 1 }));
+        record("test-beta", &json!("hi"));
+        record("test-alpha", &json!({ "n": 2 })); // newer payload wins
         let states = latest_states();
         assert_eq!(states["test-alpha"], json!({ "n": 2 }));
         assert_eq!(states["test-beta"], json!("hi"));
+    }
+
+    #[test]
+    fn record_reports_whether_the_payload_changed() {
+        assert!(record("test-dedupe", &json!({ "n": 1 })));
+        assert!(!record("test-dedupe", &json!({ "n": 1 }))); // no-change → drop
+        assert!(record("test-dedupe", &json!({ "n": 2 })));
+        assert_eq!(latest_states()["test-dedupe"], json!({ "n": 2 }));
     }
 
     #[test]

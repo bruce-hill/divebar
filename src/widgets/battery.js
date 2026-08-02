@@ -1,7 +1,7 @@
 // Battery widget: SVG battery whose fill width tracks the exact charge
-// percent; while charging the outline goes accent-colored and a shimmer
-// sweeps the fill. Hides itself entirely on machines with no battery
-// (stats.battery is null).
+// percent; when charging starts the outline goes accent-colored and a
+// shimmer sweeps the fill a few times. Hides itself entirely on machines
+// with no battery (stats.battery is null).
 
 // Interior fill geometry: the body rect is x=1.5..34.5, the fill inset to
 // x=3.7..32.3, so full charge is 28.6 units wide.
@@ -21,11 +21,15 @@ export default {
     }
     .widget-battery.present { display: flex; }
     .widget-battery.charging .icon { color: var(--accent); }
-    /* Highlight sweeping across the fill while charging */
+    /* Highlight sweeping across the fill when charging starts. A finite
+       iteration count, not infinite: the bar renders without GPU
+       compositing, so a perpetual animation would repaint the whole time
+       the machine is plugged in. After the last sweep the shimmer rect
+       rests outside the clip, i.e. invisible. */
     .widget-battery .shimmer { display: none; }
     .widget-battery.charging .shimmer {
       display: block;
-      animation: divebar-bat-shimmer 2.2s linear infinite;
+      animation: divebar-bat-shimmer 2.2s linear 3;
     }
     @keyframes divebar-bat-shimmer {
       from { transform: translateX(0); }

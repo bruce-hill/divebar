@@ -40,9 +40,21 @@ export default {
     textEl.style.width = `${widthCh(options)}ch`;
     el.appendChild(textEl);
 
-    const render = () => (textEl.textContent = format(new Date(), options));
+    // Tick on the boundary where the display actually changes: every
+    // second only when seconds are shown, otherwise once a minute. The
+    // small pad keeps an early-firing timer from landing just before the
+    // boundary (the re-render would then be a no-op and reschedule).
+    let timer;
+    const render = () => {
+      const now = new Date();
+      textEl.textContent = format(now, options);
+      const msIntoSecond = now.getMilliseconds();
+      const delay = options.seconds
+        ? 1000 - msIntoSecond
+        : 60000 - now.getSeconds() * 1000 - msIntoSecond;
+      timer = setTimeout(render, delay + 20);
+    };
     render();
-    const timer = setInterval(render, 1000);
-    return { el, destroy: () => clearInterval(timer) };
+    return { el, destroy: () => clearTimeout(timer) };
   },
 };

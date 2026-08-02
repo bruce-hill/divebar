@@ -32,17 +32,20 @@ export default {
     textEl.className = "text";
     el.appendChild(textEl);
 
+    // The date only changes at midnight; a minute-aligned tick keeps the
+    // widget current (even across suspend/resume) with rare wakeups.
+    let timer;
     const render = () => {
       const d = new Date();
       const year = options.showYear ? ` ${d.getFullYear()}` : "";
       textEl.textContent = `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}${year}`;
+      timer = setTimeout(render, 60000 - d.getSeconds() * 1000 - d.getMilliseconds() + 20);
     };
     render();
-    const timer = setInterval(render, 1000);
     return {
       el,
       destroy() {
-        clearInterval(timer);
+        clearTimeout(timer);
         popup.close();
       },
     };
