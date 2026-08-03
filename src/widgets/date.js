@@ -22,7 +22,7 @@ export default {
   settings: [
     { key: "showYear", label: "Show year", type: "boolean", default: false },
   ],
-  create({ options }) {
+  create({ options, listen }) {
     const el = document.createElement("div");
     el.className = "chip clickable widget-date";
     el.style.cursor = "pointer";
@@ -33,19 +33,24 @@ export default {
     el.appendChild(textEl);
 
     // The date only changes at midnight; a minute-aligned tick keeps the
-    // widget current (even across suspend/resume) with rare wakeups.
+    // widget current with rare wakeups. The backend also pings resume
+    // from suspend directly, so a sleep spanning midnight doesn't leave
+    // yesterday's date up for the rest of the pending minute.
     let timer;
     const render = () => {
+      clearTimeout(timer);
       const d = new Date();
       const year = options.showYear ? ` ${d.getFullYear()}` : "";
       textEl.textContent = `${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}${year}`;
       timer = setTimeout(render, 60000 - d.getSeconds() * 1000 - d.getMilliseconds() + 20);
     };
     render();
+    const unlisten = listen("divebar://resume", render);
     return {
       el,
       destroy() {
         clearTimeout(timer);
+        unlisten.then((f) => f());
         popup.close();
       },
     };

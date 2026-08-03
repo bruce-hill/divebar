@@ -7,6 +7,7 @@ mod hlwm;
 mod icons;
 mod media;
 mod readers;
+mod resume;
 mod stats;
 mod tray;
 mod weather;
@@ -139,6 +140,7 @@ fn main() {
             tray::spawn_tray_host(app.handle().clone());
             weather::spawn_weather(app.handle().clone());
             media::spawn_media(app.handle().clone());
+            resume::spawn_resume_watcher(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

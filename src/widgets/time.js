@@ -32,7 +32,7 @@ export default {
     { key: "hour24", label: "24-hour clock", type: "boolean", default: false },
     { key: "seconds", label: "Show seconds", type: "boolean", default: false },
   ],
-  create({ options }) {
+  create({ options, listen }) {
     const el = document.createElement("div");
     el.className = "chip widget-time";
     const textEl = document.createElement("span");
@@ -46,6 +46,7 @@ export default {
     // boundary (the re-render would then be a no-op and reschedule).
     let timer;
     const render = () => {
+      clearTimeout(timer);
       const now = new Date();
       textEl.textContent = format(now, options);
       const msIntoSecond = now.getMilliseconds();
@@ -55,6 +56,15 @@ export default {
       timer = setTimeout(render, delay + 20);
     };
     render();
-    return { el, destroy: () => clearTimeout(timer) };
+    // The backend detects resume from suspend and pings this so the clock
+    // doesn't sit on a stale reading for the rest of its pending tick.
+    const unlisten = listen("divebar://resume", render);
+    return {
+      el,
+      destroy: () => {
+        clearTimeout(timer);
+        unlisten.then((f) => f());
+      },
+    };
   },
 };
