@@ -7,6 +7,8 @@ styling compared to what you can get with HTML/CSS, simple stuff like proper
 text truncation, dynamic sizing, and so on. So, I made this project to get a
 simple status bar that actually does have sane layout and formatting options.
 
+![Screenshot of divebar](screenshot.png)
+
 ## ⚠️ Slop Alert! ⚠️
 
 This project is wholly vibe coded. I made it for personal usage, but just
