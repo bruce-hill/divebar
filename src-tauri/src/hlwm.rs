@@ -100,6 +100,22 @@ fn read_window_title() -> String {
     run_herbstclient(&["attr", "clients.focus.title"]).unwrap_or_default()
 }
 
+/// Hands X input focus back to whichever client herbstluftwm currently
+/// tracks as focused, undoing `linux::grab_input_focus` once a bar popup
+/// closes. Dock windows (ours) are outside herbstluftwm's normal client
+/// tracking, so grabbing focus for a popup never disturbs it — this just
+/// asks herbstluftwm to reassert what it already thinks is focused.
+pub fn restore_focus() {
+    let Some(winid) = run_herbstclient(&["attr", "clients.focus.winid"]) else {
+        return;
+    };
+    let winid = winid.trim();
+    if winid.is_empty() || winid == "0x0" {
+        return;
+    }
+    let _ = run_herbstclient(&["jumpto", winid]);
+}
+
 fn run_herbstclient(args: &[&str]) -> Option<String> {
     crate::readers::run("herbstclient", args)
 }

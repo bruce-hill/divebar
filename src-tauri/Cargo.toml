@@ -22,6 +22,8 @@ futures-util = "0.3"
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 gdk = "0.18"
+gdkx11 = "0.18"
+webkit2gtk = "2.0"
 
 [profile.release]
 strip = true

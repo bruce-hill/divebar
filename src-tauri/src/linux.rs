@@ -5,6 +5,7 @@
 use gtk::prelude::*;
 use std::os::raw::c_ulong;
 use tauri::WebviewWindow;
+use x11rb::protocol::xproto::{self, InputFocus};
 
 /// Detects a HiDPI zoom factor from the GDK screen's font DPI (Xft.dpi /
 /// XSETTINGS). WebKitGTK ignores font DPI and only scales by the integer
@@ -63,6 +64,41 @@ pub fn make_dialog(window: &WebviewWindow) {
     if let Ok(gtk_window) = window.gtk_window() {
         gtk_window.set_type_hint(gdk::WindowTypeHint::Dialog);
     }
+}
+
+/// Grabs keyboard focus for the bar window directly, bypassing the window
+/// manager. Dock-type windows (ours, so tiled windows aren't placed
+/// underneath) sit outside herbstluftwm's normal client/focus tracking, so
+/// a polite WM-mediated request (GTK's `present`/`set_focus`) is liable to
+/// just be ignored. Without this, text fields in bar popups (e.g. the
+/// weather widget's location) accept clicks but never receive keystrokes —
+/// they go to whichever window last held focus instead. Two parts: a raw
+/// `SetInputFocus` for X-level focus, and a GTK-level `grab_focus` on the
+/// webview widget itself, since WebKitGTK only routes keys into the DOM
+/// once it believes it holds that focus — X focus alone isn't enough. Must
+/// run on the main thread (GTK is not thread-safe). Call
+/// `hlwm::restore_focus` when the popup closes so the previously focused
+/// client gets it back.
+pub fn grab_input_focus(window: &WebviewWindow) {
+    use x11rb::connection::Connection;
+
+    if let Some(xid) = window_xid(window) {
+        if let Ok((conn, _)) = x11rb::connect(None) {
+            let _ = xproto::set_input_focus(&conn, InputFocus::PARENT, xid, x11rb::CURRENT_TIME);
+            let _ = conn.flush();
+        }
+    }
+
+    let _ = window.with_webview(|webview| {
+        webview.inner().grab_focus();
+    });
+}
+
+fn window_xid(window: &WebviewWindow) -> Option<u32> {
+    let gtk_window = window.gtk_window().ok()?;
+    let gdk_window = gtk_window.window()?;
+    let x11_window = gdk_window.downcast::<gdkx11::X11Window>().ok()?;
+    Some(x11_window.xid() as u32)
 }
 
 pub fn setup_dock_window(

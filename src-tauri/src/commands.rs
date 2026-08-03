@@ -100,11 +100,26 @@ pub async fn set_popup_open(
     window
         .run_on_main_thread(move || {
             #[cfg(target_os = "linux")]
-            crate::linux::set_region(&win, &rects, !composited);
+            {
+                crate::linux::set_region(&win, &rects, !composited);
+                // A popup's controls (e.g. the weather widget's location
+                // field) need real X keyboard focus, which our dock-type
+                // window doesn't get automatically. Grabbed while any
+                // popup is open — harmless for pointer-only ones — and
+                // handed back to the WM's own focused client on close.
+                if open {
+                    crate::linux::grab_input_focus(&win);
+                }
+            }
             #[cfg(not(target_os = "linux"))]
             let _ = (&win, rects, composited);
         })
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "linux")]
+    if !open {
+        crate::hlwm::restore_focus();
+    }
+    Ok(())
 }
 
 /// Approximates a rectangle with rounded bottom corners as a stack of
