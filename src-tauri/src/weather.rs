@@ -7,7 +7,7 @@ use crate::events::Trigger;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::{Duration, SystemTime};
 use tauri::AppHandle;
 
 const FETCH_INTERVAL: Duration = Duration::from_secs(15 * 60);
@@ -40,7 +40,7 @@ fn configured_location() -> String {
 
 pub fn spawn_weather(app: AppHandle) {
     let mut last_location: Option<String> = None;
-    let mut last_fetch: Option<Instant> = None;
+    let mut last_fetch: Option<SystemTime> = None;
     let mut last_ok = false;
     crate::events::spawn_poll_loop(
         app,
@@ -50,18 +50,22 @@ pub fn spawn_weather(app: AppHandle) {
         Duration::ZERO,
         move || {
             let location = configured_location();
+            // Wall-clock, not Instant: Instant is CLOCK_MONOTONIC-backed and
+            // freezes across suspend, which would hide however long the
+            // machine was actually asleep and leave stale weather up long
+            // after a resume-triggered refresh should have gone through.
             let due = match last_fetch {
                 None => true,
-                Some(t) => {
-                    t.elapsed() >= if last_ok { FETCH_INTERVAL } else { RETRY_INTERVAL }
-                }
+                Some(t) => t.elapsed().map_or(true, |e| {
+                    e >= if last_ok { FETCH_INTERVAL } else { RETRY_INTERVAL }
+                }),
             };
             if !due && last_location.as_deref() == Some(&location) {
                 return None;
             }
             let payload = fetch(&location);
             last_ok = !payload.is_null();
-            last_fetch = Some(Instant::now());
+            last_fetch = Some(SystemTime::now());
             last_location = Some(location);
             // Failed fetches emit nothing: stale weather beats no weather,
             // and the frontend tolerates the channel's absence.
