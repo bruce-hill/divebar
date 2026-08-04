@@ -3,7 +3,7 @@
 // calls, and synthetic pointer events for the drag path (element rects
 // are stubbed — jsdom has no layout).
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createLayoutEditor, reorderTarget } from "../src/lib/layout-edit.js";
 import { initCoordinator } from "../src/lib/coordinator.js";
 import WIDGET_NAMES from "../src/widgets/index.js";

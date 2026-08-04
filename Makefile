@@ -4,7 +4,7 @@ BINDIR := $(DESTDIR)$(PREFIX)/bin
 TARGET_DIR := $(or $(CARGO_TARGET_DIR),$(CURDIR)/src-tauri/target)
 BIN := $(TARGET_DIR)/release/divebar
 
-.PHONY: build run install uninstall clean
+.PHONY: build run lint install uninstall clean
 
 build:
 	cd src-tauri && cargo build --release
@@ -13,6 +13,10 @@ build:
 
 run:
 	cd src-tauri && cargo run
+
+lint:
+	cd src-tauri && cargo clippy --all-targets -- -D warnings
+	npm run lint
 
 # No build dependency: `sudo make install` must not run cargo as root.
 install:
