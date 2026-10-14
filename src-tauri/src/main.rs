@@ -55,24 +55,75 @@ pub fn bar_height_from(config: &serde_json::Value) -> f64 {
         .unwrap_or(DEFAULT_BAR_HEIGHT)
 }
 
+/// Whether to force WebKitGTK's non-composited (software) rendering path.
+///
+/// Before WebKitGTK 2.54, accelerated compositing rendered black on
+/// shaped/ARGB X11 windows (especially without a compositor), so the
+/// software path was the only one that worked. On 2.54+ this legacy path
+/// itself renders the bar black, so the override is limited to older
+/// WebKit; the 2.54+ compositor-less case is handled in `setup` instead
+/// (opaque window + shared-memory renderer). Setting
+/// WEBKIT_DISABLE_COMPOSITING_MODE yourself (to "1" or "0") always wins.
+#[cfg(target_os = "linux")]
+fn force_software_compositing() -> bool {
+    // SAFETY: plain FFI getters with no preconditions or side effects.
+    let (major, minor) = unsafe {
+        (
+            webkit2gtk::ffi::webkit_get_major_version(),
+            webkit2gtk::ffi::webkit_get_minor_version(),
+        )
+    };
+    (major, minor) < (2, 54)
+}
+
 fn main() {
-    // WebKitGTK's accelerated compositing renders black on shaped/ARGB X11
-    // windows (especially without a compositor). A statusbar doesn't need
-    // GPU compositing — force the software path unless the user overrides.
-    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none()
+        && force_software_compositing()
+    {
         std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
     }
 
     tauri::Builder::default()
         .setup(|app| {
-            let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            // Whether a compositing manager is running. Without one, the
+            // window's bounding shape clips everything outside the bar strip
+            // (and any open popup), so the window itself can be opaque. That
+            // matters since WebKitGTK 2.54: its renderers paint transparent
+            // surfaces as black or only partially on compositor-less X11,
+            // whereas an opaque window draws fine. The black backdrop looks
+            // identical to what the uncomposited X server showed through the
+            // alpha before (it ignores alpha and displays premultiplied RGB).
+            #[cfg(target_os = "linux")]
+            let composited = linux::screen_is_composited();
+            #[cfg(not(target_os = "linux"))]
+            let composited = true;
+
+            // Without a compositor the window carries an X11 *bounding*
+            // shape (see linux::set_region), and WebKitGTK 2.54's GPU
+            // (DMA-BUF) renderer paints nothing into a bounding-shaped
+            // window — a plain GtkWindow + WebKitWebView with a shape
+            // reproduces it. Its shared-memory renderer, the path WebKit
+            // uses when GL is unavailable, works, so select it before the
+            // first webview is created. Honor an explicit setting from the
+            // environment.
+            #[cfg(target_os = "linux")]
+            if !composited && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+                std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            }
+
+            let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
                 .title("divebar")
                 .decorations(false)
-                .transparent(true)
                 .always_on_top(true)
                 .skip_taskbar(true)
-                .visible(false)
-                .build()?;
+                .visible(false);
+            let builder = if composited {
+                builder.transparent(true)
+            } else {
+                builder.background_color(tauri::window::Color(0, 0, 0, 255))
+            };
+            let window = builder.build()?;
 
             // HiDPI: WebKitGTK only honors the integer GDK window scale, not
             // font DPI, so allow zooming the whole webview. Priority:
@@ -105,11 +156,6 @@ fn main() {
             // input by default.
             window.set_size(PhysicalSize::new(monitor_width_px, total_height_px))?;
             window.set_position(PhysicalPosition::new(origin.x, origin.y))?;
-
-            #[cfg(target_os = "linux")]
-            let composited = linux::is_composited(&window);
-            #[cfg(not(target_os = "linux"))]
-            let composited = true;
 
             // On X11, mark the window as a dock and reserve screen space so
             // tiled/maximized windows don't overlap the bar.

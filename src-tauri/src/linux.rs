@@ -27,11 +27,8 @@ pub fn detect_zoom(window: &WebviewWindow) -> Option<f64> {
 /// Whether a compositing manager is running. Without one, transparent
 /// window regions render as solid black, so we must clip the window's
 /// bounding shape instead of relying on alpha.
-pub fn is_composited(window: &WebviewWindow) -> bool {
-    window
-        .gtk_window()
-        .ok()
-        .and_then(|w| WidgetExt::screen(&w))
+pub fn screen_is_composited() -> bool {
+    gdk::Screen::default()
         .map(|s| s.is_composited())
         .unwrap_or(false)
 }
