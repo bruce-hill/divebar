@@ -90,6 +90,54 @@ body {
   background: var(--chip-bg-hover);
 }
 
+/* Fitts's law: every clickable element keeps its visual padding but gets
+   an invisible overlay (its ::after) that spans the full bar height and
+   meets its neighbours halfway across the gap, so there are no dead zones.
+   The overlay is a child of the element, so clicks, hover and tooltips all
+   land on the element itself; z-index -1 (inside the element's own
+   stacking context) keeps it beneath any real content the element has.
+
+   Clickable chips get this automatically. Buttons nested inside a widget
+   opt in with the `hit-target` class, and the widget describes its
+   geometry through variables:
+     --hit-inset-x / --hit-inset-y  distance from the button to the
+                                    widget's outer edge (default 0)
+     --hit-gap-x                    half the gap between siblings
+                                    (default 2px: half the #bar gap) */
+#bar .chip.clickable,
+#bar .hit-target {
+  position: relative;
+  isolation: isolate;
+}
+#bar .chip.clickable::after,
+#bar .hit-target::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * (var(--bar-pad-y) + var(--hit-inset-y, 0px)));
+  bottom: calc(-1 * (var(--bar-pad-y) + var(--hit-inset-y, 0px)));
+  left: calc(-1 * var(--hit-gap-x, 2px));
+  right: calc(-1 * var(--hit-gap-x, 2px));
+}
+/* The outermost nested buttons also cover their widget's padding and
+   half the #bar gap beyond it. */
+#bar .hit-target:first-child::after {
+  left: calc(-1 * (var(--hit-inset-x, 0px) + 2px));
+}
+#bar .hit-target:last-child::after {
+  right: calc(-1 * (var(--hit-inset-x, 0px) + 2px));
+}
+/* At either end of the bar the hitbox runs through the bar padding to the
+   window edge, so the screen edge and corners themselves are clickable. */
+#bar > :first-child.chip.clickable::after,
+#bar > :first-child .hit-target:first-child::after {
+  left: calc(-1 * (var(--bar-pad-x) + var(--hit-inset-x, 0px)));
+}
+#bar > :last-child.chip.clickable::after,
+#bar > :last-child .hit-target:last-child::after {
+  right: calc(-1 * (var(--bar-pad-x) + var(--hit-inset-x, 0px)));
+}
+
 .chip .icon {
   display: flex;
   align-items: center;

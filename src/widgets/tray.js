@@ -10,11 +10,16 @@ export default {
   name: "tray",
   css: `
     .widget-tray {
+      /* Hit-target extension (style.css): icons are inset 4px vertically
+         and sit inside the horizontal padding, with a 4px gap between. */
+      --hit-inset-x: calc(var(--chip-height) * 0.2);
+      --hit-inset-y: 4px;
+      --hit-gap-x: 2px;
       display: none;
       align-items: center;
       gap: 4px;
       height: var(--chip-height);
-      padding: 0 calc(var(--chip-height) * 0.2);
+      padding: 0 var(--hit-inset-x);
       border-radius: var(--chip-radius);
     }
     .widget-tray.has-items { display: flex; }
@@ -69,7 +74,7 @@ export default {
       el.replaceChildren(
         ...items.map((item) => {
           const btn = document.createElement("button");
-          btn.className = "tray-item";
+          btn.className = "tray-item hit-target";
           btn.title = item.title || item.id;
           btn.classList.toggle(
             "needs-attention",

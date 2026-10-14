@@ -5,11 +5,18 @@ export default {
   name: "workspaces",
   css: `
     .widget-workspaces {
+      /* How far each tag button sits inside the pill. The hit-target
+         variables (see style.css) extend each tag's clickable area over
+         this inset and halfway across the 2px gap between tags. */
+      --tag-inset: 3px;
+      --hit-inset-x: var(--tag-inset);
+      --hit-inset-y: var(--tag-inset);
+      --hit-gap-x: 1px;
       display: flex;
       align-items: center;
       gap: 2px;
       height: var(--chip-height);
-      padding: 0 3px;
+      padding: 0 var(--tag-inset);
       border-radius: var(--chip-radius);
       background: rgba(0, 0, 0, 0.26);
       box-shadow:
@@ -18,10 +25,10 @@ export default {
     }
     .widget-workspaces .tag {
       min-width: 1.3em;
-      height: calc(var(--chip-height) - 6px);
+      height: calc(var(--chip-height) - 2 * var(--tag-inset));
       padding: 0 0.25em;
       border: none;
-      border-radius: calc((var(--chip-height) - 6px) / 2);
+      border-radius: calc((var(--chip-height) - 2 * var(--tag-inset)) / 2);
       background: transparent;
       color: var(--bar-fg-dim);
       font: inherit;
@@ -78,7 +85,7 @@ export default {
         el.replaceChildren(
           ...tags.map((tag, i) => {
             const btn = document.createElement("button");
-            btn.className = "tag";
+            btn.className = "tag hit-target";
             btn.dataset.tag = tag.name;
             // Position number by default; the name is always used for
             // switching and shown as a tooltip.
@@ -93,7 +100,7 @@ export default {
         );
       }
       el.querySelectorAll(".tag").forEach((btn, i) => {
-        btn.className = `tag ${tags[i].state}`;
+        btn.className = `tag hit-target ${tags[i].state}`;
       });
     });
 
