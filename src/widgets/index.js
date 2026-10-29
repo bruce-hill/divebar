@@ -15,5 +15,6 @@ export default [
   "weather",
   "media",
   "lock",
+  "files",
   "spacer",
 ];

@@ -42,7 +42,7 @@ configurable flex-grow — for pushing widget groups apart), **weather**
 3-day forecast pop-down, IP-based location unless configured), **media**
 (MPRIS: album art + track, click play/pause, middle-click next, hides
 itself when no player is running), **lock** (padlock icon, click runs
-`slock`).
+`slock`), **files** (folder icon, click launches `pcmanfm`).
 
 The date widget's click opens a month calendar; tooltips are custom
 styled panels; the Bar section of settings includes height, padding,
@@ -180,7 +180,7 @@ User-initiated controls go the other way as Tauri commands
 (`src-tauri/src/commands.rs`): widget actions like `hlwm_use_tag`,
 `set_volume`, `toggle_mute`, `set_brightness`, `display_off`,
 `media_control`, `tray_activate`, `tray_menu_click`, `launch_wifi_gui`,
-`lock_screen`, and `resolve_location`; plus `set_popup_open` (panel
+`lock_screen`, `launch_file_manager`, and `resolve_location`; plus `set_popup_open` (panel
 space, see below) and the config/settings plumbing (`get_config`,
 `get_default_config`, `save_config`, `open_settings`, `close_settings`,
 `list_fonts`, `get_env`). Commands that change a value return the fresh

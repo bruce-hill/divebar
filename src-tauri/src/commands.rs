@@ -350,6 +350,20 @@ pub async fn lock_screen() -> Result<(), String> {
     Ok(())
 }
 
+/// Opens the file manager by launching `pcmanfm`.
+#[tauri::command]
+pub async fn launch_file_manager() -> Result<(), String> {
+    let child = Command::new("pcmanfm")
+        .spawn()
+        .map_err(|e| format!("failed to launch pcmanfm: {e}"))?;
+    // Reap the child in the background so it doesn't linger as a zombie.
+    std::thread::spawn(move || {
+        let mut child = child;
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
